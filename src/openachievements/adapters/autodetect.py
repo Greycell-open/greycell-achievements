@@ -1,0 +1,411 @@
+"""Recognising a game while it runs, wherever it came from.
+
+The watcher already sees running programs. This names them: a program inside
+Steam's `steamapps/common/<folder>` is identified exactly from Steam's install
+manifests; any other program is matched by its folder and file names against
+the catalogue's titles, and only a single clear match counts. A recognised game
+joins the library (Playing, unless it already has a status), its program is
+registered so play time counts, and folders that look like its saves are
+noted, by name only.
+
+Folder discovery lists directory names under the known save roots and reads
+no file. Reading a save still needs `save allow` (adapters/savefile.py).
+"""
+from __future__ import annotations
+
+import difflib
+import os
+import re
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from .. import steamfiles as sf
+from ..catalog import steam as cat
+from ..profile import Profile, ProfileError
+from . import executable, savefile
+
+# Words that name an edition or a release, not the game.
+_NOISE = re.compile(r"\b(definitive|deluxe|ultimate|complete|goty|game of the year|remastered|enhanced|"
+                    r"anniversary|directors cut|director s cut|edition|repack|portable|x64|x86|win64|win32|"
+                    r"shipping|launcher|dx11|dx12|v\d+(\.\d+)*|build \d+)\b")
+_BRACKETS = re.compile(r"[\[\(\{][^\]\)\}]*[\]\)\}]")
+_NON_WORD = re.compile(r"[^a-z0-9]+")
+_SYSTEM = ("\\windows\\", "/windows/", "\\windowsapps\\", "\\microsoft\\", "\\nvidia", "\\amd\\",
+           "\\common files\\", "\\appdata\\", "/usr/", "/system/", "/bin/", "/sbin/", "/library/")
+# Files and folders game engines and game SDKs leave next to a game's program.
+# Without one of these, a program is not treated as a game, whatever its name.
+_ENGINE_FILES = ("unityplayer.dll", "gameassembly.dll", "monobleedingedge", "steam_api.dll", "steam_api64.dll",
+                 "eossdk-win64-shipping.dll", "eossdk-win32-shipping.dll", "galaxy.dll", "galaxy64.dll",
+                 "bink2w64.dll", "bink2w32.dll", "binkw32.dll", "binkw64.dll", "fmod.dll", "fmod64.dll", "fmodex.dll",
+                 "fmodex64.dll", "physx3_x64.dll", "physx3_x86.dll", "renpy", "data.win", "nw_elf.dll")
+_ENGINE_SUFFIXES = (".vpk", ".bsa", ".ba2", ".pck", ".rpa", ".forge", "_data")
+SIMILARITY = 0.95
+SAVE_SCAN_EVERY = 30 * 60
+FUZZY_MIN_LENGTH = 8
+SAVE_SEARCH_DEPTH = 3
+
+
+def normalise(name: str) -> str:
+    text = _BRACKETS.sub(" ", name.lower().replace("_", " ").replace(".", " "))
+    text = _NON_WORD.sub(" ", text.replace("'", ""))
+    text = _NOISE.sub(" ", text)
+    return " ".join(text.split())
+
+
+# Folder names engines, launchers and tools use for their own purposes. A game
+# with one of these as its whole title ("SAVED", "SYNC") is never matched by name.
+_GENERIC = {"saved", "saves", "savegames", "save", "sync", "config", "configs", "logs", "log", "cache", "caches",
+            "data", "profiles", "profile", "user", "users", "settings", "temp", "tmp", "crashes", "crash",
+            "webcache", "shadercache", "local", "roaming", "game", "games", "unity", "unreal", "unrealengine",
+            "godot", "renpy", "app userdata", "steam", "backup", "backups", "screenshots", "mods", "plugins",
+            "packages", "microsoft", "google", "mozilla", "nvidia", "amd", "intel", "discord", "spotify"}
+
+
+class TitleMatcher:
+    """Catalogue titles by normalised name. A match must be unique.
+
+    A title with a subtitle ("Silent Hill: Townfall") is also known by the
+    subtitle alone when that is at least 6 characters and no other title shares
+    it, because games often name their folders that way."""
+
+    def __init__(self, index: cat.CatalogIndex | None, library: dict | None = None):
+        self.by_name: dict[str, set] = {}
+        subtitles: dict[str, set] = {}
+        for appid, (_o, _l, _c, title) in (index.entries.items() if index else []):
+            self.by_name.setdefault(normalise(title), set()).add(("steam", appid))
+            for sep in (":", " - "):
+                if sep in title:
+                    sub = normalise(title.split(sep, 1)[1])
+                    if len(sub) >= 6:
+                        subtitles.setdefault(sub, set()).add(("steam", appid))
+        for sub, ids in subtitles.items():
+            if len(ids) == 1 and sub not in self.by_name:
+                self.by_name[sub] = set(ids)
+        for name in [n for n in self.by_name if n in _GENERIC]:
+            del self.by_name[name]
+        library = library or {}
+
+        def identity(game_id: str) -> tuple:
+            # A game shown inside another (game link) is that other game; a
+            # Steam game is the same game as its catalogue entry. One identity
+            # each, or a match would look ambiguous.
+            seen = set()
+            while library.get(game_id, {}).get("linked_to") and game_id not in seen:
+                seen.add(game_id)
+                game_id = library[game_id]["linked_to"]
+            steam = re.fullmatch(r"steam-(\d+)", game_id)
+            return ("steam", int(steam.group(1))) if steam else ("game", game_id)
+
+        self.by_name = {name: {identity(f"steam-{i}") if kind == "steam" else identity(i) for kind, i in ids}
+                        for name, ids in self.by_name.items()}
+        for game_id, game in library.items():
+            if game.get("title"):
+                self.by_name.setdefault(normalise(game["title"]), set()).add(identity(game_id))
+        self.names = [n for n in self.by_name if len(n) >= 4]
+
+    def match(self, candidates: list[str]) -> tuple | None:
+        for raw in candidates:
+            name = normalise(raw)
+            if len(name) < 4:
+                continue
+            exact = self.by_name.get(name)
+            if exact and len(exact) == 1:
+                return next(iter(exact))
+            if len(name) < FUZZY_MIN_LENGTH:
+                continue
+            close = difflib.get_close_matches(name, self.names, n=2, cutoff=SIMILARITY)
+            if len(close) == 1 and len(self.by_name[close[0]]) == 1:
+                return next(iter(self.by_name[close[0]]))
+        return None
+
+
+def looks_like_a_game(path: str) -> bool:
+    """A game engine or game SDK file beside the program or one folder up, or
+    an Unreal-style Binaries folder above it. Deliberately narrow: generic
+    runtime files (Chromium .pak, SDL, OpenAL, lib folders) appear in ordinary
+    apps too."""
+    here = Path(path).parent
+    if any(a.name.lower() == "binaries" for a in list(here.parents)[:2] + [here]):
+        return True
+    for folder in (here, here.parent):
+        try:
+            names = [e.name.lower() for e in os.scandir(folder)]
+        except OSError:
+            continue
+        if any(n in _ENGINE_FILES or n.endswith(_ENGINE_SUFFIXES) for n in names):
+            return True
+    return False
+
+
+def candidates_for(path: str) -> list[str]:
+    """Names to try, most specific first: the folders above the program (the
+    game folder is usually one or two up), then the program's own name."""
+    p = Path(path)
+    parts = [a for a in p.parents][:3]
+    names = [a.name for a in parts if a.name and a.name.lower() not in
+             ("bin", "binaries", "win64", "win32", "x64", "game", "games", "program files", "program files (x86)")]
+    return names + [p.stem]
+
+
+def steam_install_dirs(root: Path | None) -> dict[str, int]:
+    """Lowercased install folder name -> appid, from every Steam library's manifests."""
+    if root is None:
+        return {}
+    found = {}
+    try:
+        libraries = sf.parse_text_vdf((root / "steamapps" / "libraryfolders.vdf").read_text(
+            encoding="utf-8", errors="replace")).get("libraryfolders", {})
+    except (OSError, sf.SteamFileError):
+        libraries = {}
+    paths = {root} | {Path(v["path"]) for v in libraries.values() if isinstance(v, dict) and v.get("path")}
+    for lib in paths:
+        try:
+            for entry in os.scandir(lib / "steamapps"):
+                if entry.name.startswith("appmanifest_") and entry.name.endswith(".acf"):
+                    state = sf.parse_text_vdf(Path(entry.path).read_text(encoding="utf-8", errors="replace"))
+                    app = state.get("AppState", {})
+                    if str(app.get("appid", "")).isdigit() and app.get("installdir"):
+                        found[app["installdir"].lower()] = int(app["appid"])
+        except (OSError, sf.SteamFileError):
+            continue
+    return found
+
+
+def find_save_folders(title: str, limit: int = 5) -> list[str]:
+    """Folders under the known save roots named like the game. Names only."""
+    target = normalise(title)
+    if len(target) < 4:
+        return []
+    found = []
+    roots = [savefile.root_folder(r) for r in ("LOCALAPPDATA", "LOCALLOW", "APPDATA", "DOCUMENTS", "SAVED_GAMES")]
+    roots += [r / "My Games" for r in roots[3:4] if r]
+    for root in [r for r in roots if r and r.is_dir()]:
+        stack = [(root, 0)]
+        while stack and len(found) < limit:
+            folder, depth = stack.pop()
+            try:
+                entries = [e for e in os.scandir(folder) if e.is_dir(follow_symlinks=False) and not e.name.startswith(".")]
+            except OSError:
+                continue
+            for e in entries:
+                name = normalise(e.name)
+                if name == target or (len(name) >= 6 and difflib.SequenceMatcher(None, name, target).ratio() >= SIMILARITY):
+                    found.append(e.path)
+                elif depth + 1 < SAVE_SEARCH_DEPTH and depth == 0:
+                    stack.append((Path(e.path), depth + 1))   # publisher folder, then the game
+    return found[:limit]
+
+
+class _Titles:
+    """Known Steam names in the shape TitleMatcher reads."""
+
+    def __init__(self, names: dict[int, str]):
+        self.entries = {appid: (0, 0, 0, title) for appid, title in names.items()}
+
+
+# ---- games found by the saves they left --------------------------------------------------
+
+# Extensions that are saves by themselves, and generic ones that count only
+# when the file name also says so (plenty of ordinary apps keep .dat or .json).
+_SAVE_EXT = (".sav", ".save", ".sl2", ".es3", ".ess", ".rpgsave", ".savegame", ".sav2", ".sgd", ".gsave")
+_MAYBE_EXT = (".dat", ".bin", ".json", ".slot", ".profile")
+_SAVE_WORDS = ("save", "slot", "profile", "progress", "checkpoint")
+
+
+def _save_evidence(folder: Path, depth: int = 0) -> float | None:
+    """Newest modified time of save-like files in the folder (or its
+    SaveGames/Saves subfolders), or None when nothing looks like a save."""
+    newest = None
+    try:
+        entries = list(os.scandir(folder))
+    except OSError:
+        return None
+    for e in entries:
+        name = e.name.lower()
+        try:
+            if e.is_file(follow_symlinks=False):
+                if name.endswith(_SAVE_EXT) or (name.endswith(_MAYBE_EXT) and any(w in name for w in _SAVE_WORDS)):
+                    newest = max(newest or 0, e.stat(follow_symlinks=False).st_mtime)
+            elif e.is_dir(follow_symlinks=False) and depth < 2 and (
+                    any(w in name for w in ("save", "slot", "profile")) or name in ("saved", "savegames")):
+                inner = _save_evidence(Path(e.path), depth + 1)
+                if inner:
+                    newest = max(newest or 0, inner)
+        except OSError:
+            continue
+    return newest
+
+
+def discover_saved_games(matcher: TitleMatcher, roots: list[Path] | None = None, depth: int = 3) -> list[dict]:
+    """Folders under the save roots named exactly like one catalogued game and
+    holding save-like files: games that have been played on this computer,
+    whatever their source. Reads names and dates only."""
+    if roots is None:
+        found_roots = [savefile.root_folder(r) for r in ("LOCALAPPDATA", "LOCALLOW", "APPDATA", "DOCUMENTS",
+                                                        "SAVED_GAMES")]
+        roots = [r for r in found_roots if r] + [r / "My Games" for r in found_roots[3:4] if r]
+    found: dict[tuple, dict] = {}
+    for root in [r for r in roots if r.is_dir()]:
+        stack = [(root, 0)]
+        while stack:
+            folder, level = stack.pop()
+            try:
+                subdirs = [e for e in os.scandir(folder) if e.is_dir(follow_symlinks=False)
+                           and not e.name.startswith((".", "$"))]
+            except OSError:
+                continue
+            for e in subdirs:
+                name = normalise(e.name)
+                ids = matcher.by_name.get(name)
+                if ids and len(ids) == 1 and len(name) >= 4:
+                    when = _save_evidence(Path(e.path))
+                    if when:
+                        ident = next(iter(ids))
+                        if ident not in found or when > found[ident]["when"]:
+                            found[ident] = {"ident": ident, "folder": e.path, "when": when}
+                        continue
+                if level + 1 < depth:
+                    stack.append((Path(e.path), level + 1))
+    return list(found.values())
+
+
+@dataclass
+class AutoDetector:
+    """One poll: which running programs are games, and what to do about them."""
+    profile: Profile
+    catalog_dir: Path | None = None
+    known: dict = field(default_factory=dict)          # lowercased exe path -> game_id or None (not a game)
+    _matcher: TitleMatcher | None = None
+    _matcher_at: float = 0.0
+    _steam_dirs: dict | None = None
+    _saves_at: float = -1e18
+
+    def enabled(self) -> bool:
+        return self.profile.config.load().get("autodetect", {}).get(self.profile.profile_id, True)
+
+    def _refresh(self) -> None:
+        if self._matcher is None or time.monotonic() - self._matcher_at > 300:
+            # New titles may have arrived (the crawl runs for days): programs
+            # judged "not a game" earlier get another look.
+            self.known = {k: v for k, v in self.known.items() if v is not None}
+            folder = Path(self.catalog_dir) if self.catalog_dir else cat.default_dir()
+            index = cat.CatalogIndex(folder) if (folder / cat.PACKS_FILE).exists() else None
+            self._index = index
+            # Every Steam title known here, not only games the crawl has reached:
+            # a game is recognised by name; its achievements follow when crawled.
+            from .steam_local import known_names
+            self._names = known_names(None, index, folder)
+            self._matcher = TitleMatcher(_Titles(self._names), self.profile.state()["games"])
+            self._matcher_at = time.monotonic()
+            self._steam_dirs = steam_install_dirs(sf.steam_dir())
+
+    def identify(self, path: str) -> tuple | None:
+        low = path.lower().replace("/", "\\")
+        if any(s in low for s in _SYSTEM):
+            return None
+        if "\\steamapps\\common\\" in low:
+            folder = low.split("\\steamapps\\common\\", 1)[1].split("\\", 1)[0]
+            appid = (self._steam_dirs or {}).get(folder)
+            if appid:
+                return ("steam", appid)
+        if not looks_like_a_game(path):
+            return None
+        return self._matcher.match(candidates_for(path))
+
+    def discover_saves(self) -> list[dict]:
+        """Add games found by their save folders; last played is the newest save."""
+        from .base import utc_iso
+        self._refresh()
+        added = []
+        state = self.profile.state()
+        for hit in discover_saved_games(self._matcher):
+            kind, ref = hit["ident"]
+            game_id = f"steam-{ref}" if kind == "steam" else ref
+            when = utc_iso(hit["when"])
+            try:
+                if game_id not in state["games"]:
+                    if kind != "steam":
+                        continue
+                    if self._index is not None and self._index.get(ref):
+                        cat.add_to_profile(self.profile, self._index, ref)
+                    else:
+                        self.profile.register_game(game_id, self._names.get(ref, f"Steam app {ref}"),
+                                                   platform="PC", external_ids={"steam": ref})
+                    added.append({"game_id": game_id, "folder": hit["folder"]})
+                game = self.profile.state()["games"][game_id]
+                if when and when > (game.get("last_played") or ""):
+                    self.profile.record("game.metadata_updated", {"last_played": when}, game_id=game_id,
+                                        adapter="save-file")
+                    if time.time() - hit["when"] < 14 * 86400 and not game.get("status"):
+                        self.profile.set_status(game_id, "playing")
+                key = f"{self.profile.profile_id}:{game_id}"
+                if hit["folder"] not in (self.profile.config.load().get("save_candidates") or {}).get(key, []):
+                    with self.profile.config.editing() as config:   # only when there is something new
+                        found = config.setdefault("save_candidates", {}).setdefault(key, [])
+                        if hit["folder"] not in found:
+                            found.insert(0, hit["folder"])
+            except (ProfileError, cat.CatalogError, OSError, ValueError):
+                continue
+            state = self.profile.state()
+        self._saves_at = time.monotonic()
+        return added
+
+    def poll(self, running: set[str] | None = None) -> list[dict]:
+        if not self.enabled():
+            return []
+        running = executable.running_executables() if running is None else running
+        self._refresh()
+        if time.monotonic() - self._saves_at > SAVE_SCAN_EVERY:
+            try:
+                self.discover_saves()
+            except Exception:  # noqa: BLE001 - discovery is best effort; recognition goes on
+                self._saves_at = time.monotonic()
+        # A program that stopped is judged afresh the next time it starts.
+        self.known = {k: v for k, v in self.known.items() if k in running}
+        found = []
+        for path in running:
+            if path in self.known or ("\\" not in path and "/" not in path):
+                continue
+            match = self.identify(path)
+            self.known[path] = None
+            if not match:
+                continue
+            try:
+                found.append(self._adopt(path, match))
+                self.known[path] = found[-1]["game_id"]
+            except (ProfileError, cat.CatalogError, OSError, ValueError):
+                continue
+        return found
+
+    def _adopt(self, path: str, match: tuple) -> dict:
+        kind, ref = match
+        state = self.profile.state()
+        if kind == "steam":
+            game_id = f"steam-{ref}"
+            if game_id not in state["games"]:
+                if self._index is not None and self._index.get(ref):
+                    cat.add_to_profile(self.profile, self._index, ref)
+                else:
+                    self.profile.register_game(game_id, getattr(self, "_names", {}).get(ref) or Path(path).parent.name,
+                                               platform="PC", external_ids={"steam": ref})
+        else:
+            game_id = ref
+        game = self.profile.state()["games"][game_id]
+        if game.get("status") in (None, "backlog", "wishlist"):
+            self.profile.set_status(game_id, "playing")
+        if Path(path).is_file():
+            executable.register(self.profile, game_id, Path(path), source="detected")
+        saves = find_save_folders(game.get("title") or game_id)
+        with self.profile.config.editing() as config:
+            config.setdefault("save_candidates", {})[f"{self.profile.profile_id}:{game_id}"] = saves
+        return {"game_id": game_id, "title": game.get("title"), "path": path, "save_folders": saves}
+
+
+def set_enabled(profile: Profile, on: bool) -> None:
+    with profile.config.editing() as config:
+        config.setdefault("autodetect", {})[profile.profile_id] = on
+
+
+def save_candidates(profile: Profile, game_id: str) -> list[str]:
+    return profile.config.load().get("save_candidates", {}).get(f"{profile.profile_id}:{game_id}", [])

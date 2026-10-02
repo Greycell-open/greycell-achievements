@@ -1,0 +1,169 @@
+{
+ "game_id": "steam-1636440",
+ "title": "SILENT HILL: Townfall",
+ "verified": "2026-10-01 against a real save (Unreal Engine 5.6, GVAS, property-tag layout 1017); story rules 2026-10-01 against the owner's save (missions 1, 3, 5, 6 Completed, 7 Active)",
+ "saves": [
+  {
+   "id": "profile",
+   "root": "LOCALAPPDATA",
+   "path": "Townfall/Saved/SaveGames",
+   "pattern": "ProfileData.sav",
+   "format": "gvas"
+  },
+  {
+   "id": "slots",
+   "root": "LOCALAPPDATA",
+   "path": "Townfall/Saved/SaveGames",
+   "pattern": "SaveGame*.sav",
+   "format": "gvas"
+  }
+ ],
+ "achievements": {
+  "From Scratch": {
+   "why": "Create 20 new items by combining others. ProfileData keeps a lifetime count of crafted items.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "profile",
+     "field": "SavedIntMap.Total_NumItemsCrafted",
+     "op": ">=",
+     "value": 20
+    }
+   ]
+  },
+  "Fleeting Visit": {
+   "why": "Finish the game in under 4 hours. TimePlayed_TotalRecord is the best whole-game time in seconds, -1 until a playthrough is finished (mission records beside it are seconds too).",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "profile",
+     "field": "SavedFloatMap.TimePlayed_TotalRecord",
+     "op": ">",
+     "value": 0
+    },
+    {
+     "signal": "save",
+     "save": "profile",
+     "field": "SavedFloatMap.TimePlayed_TotalRecord",
+     "op": "<",
+     "value": 14400
+    }
+   ]
+  },
+  "Welcome To St. Amelia": {
+   "why": "Escape the Otherworld and return to the town square: chapter 1 ends in mission 3 (cinematic 07 'Escape safe room').",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission3_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Resignation": {
+   "why": "At the Shorefront Family Clinic, show Zoe you understand: chapter 2. Mission 6 holds the last chapter 2 cinematic (15, Watching Zoe's Transmission) and the first of chapter 3 (Being Zoe).",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission6_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "A Long Night Ahead": {
+   "why": "Report to Dr. Glenn at the Medical Centre: mission 10 opens with cinematic 21 'Journey to Medical'.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission10_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "The Patient": {
+   "why": "Tend to the Patient: mission 40, cinematic 26 'Zoe The Patient, Inside Surgery'.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission40_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Many Into One": {
+   "why": "Accept the transfusion in the Alternate Medical Centre: after The Patient and before Key To The Castle (Steam 35 percent between 44 and 29), so certainly done once mission 13 is.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission13_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Key To The Castle": {
+   "why": "Unlock the path to CEG Tower: the game's sequence SEQ_Mission13_CEG_GateOpen is in mission 13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission13_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Find Yourself": {
+   "why": "Make it back to the office on the 10th floor: mission 17, cinematic 41 'FY'.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission17_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Can't Change Things": {
+   "why": "Exhaust the options in the Alternate Facility: before Eraser (Steam 20.8 against 20.7), so certainly done once mission 23 is.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission23_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  },
+  "Eraser": {
+   "why": "Defeat The Weight: mission 23, cinematic 52 'Eraser, Giving Up'.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slots",
+     "field": "SavedStringMap.TFMM_Mission23_SaveState",
+     "op": "==",
+     "value": "Completed"
+    }
+   ]
+  }
+ },
+ "not_mapped": {
+  "story": "Mission order comes from the developer saves the game ships (Content/Townfall/Debug/DevSaves/Mission<N>/PCUTSCENE <k> - ID <cinematic> - <initials>), whose cinematic ids run 1, 3, 5, 6, 7, 10, 40, 11, 12, 13, 14, 8, 17, 18, 21, 23, 29; cinematic names carry the chapter (Cin_Ch02_EnteringShorefrontClinic). Steam's global rates fall in an unbroken line (88, 65, 57, 44, 35, 29, 24, 21, 21 percent), so every story achievement is required, not a choice. Where the exact mission is unsure, the rule waits for the latest mission certain to contain it: late, never early. Endings are not mapped: they are a bitmask whose bit order is not known.",
+  "Lured Off Track": "The save counts enemies distracted by any thrown object (bottles and bricks); the achievement needs bottles.",
+  "Static Distractions": "The save counts noise makers and environmental distractions; neither is known to be the radios.",
+  "Cold Calling": "Calls are a bitmask; the number of phone numbers in the game is not known.",
+  "endings": "Endings are a bitmask; which bit is which ending is not known."
+ }
+}

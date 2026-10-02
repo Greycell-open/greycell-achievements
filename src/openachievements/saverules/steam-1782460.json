@@ -1,0 +1,869 @@
+{
+ "game_id": "steam-1782460",
+ "title": "Hell Clock",
+ "verified": "2026-10-01 against a real PlayerSave0.json: _achievementsSaveData.AchievementsUnlocked holds Steam internal names (ACH_KILLED_LOOTGOBLIN, ...)",
+ "saves": [
+  {
+   "id": "player",
+   "root": "LOCALLOW",
+   "path": "Rogue Snail/Hell Clock",
+   "pattern": "PlayerSave[0-9].json",
+   "format": "json"
+  }
+ ],
+ "achievements": {
+  "The Merchant": {
+   "why": "The game's own record lists ACH_KILLED_MERCHANT.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MERCHANT"
+    }
+   ]
+  },
+  "Old Companions": {
+   "why": "The game's own record lists ACH_OLD_COMPANIONS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_OLD_COMPANIONS"
+    }
+   ]
+  },
+  "Historical Reparation": {
+   "why": "The game's own record lists ACH_OUR_LEGACY.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_OUR_LEGACY"
+    }
+   ]
+  },
+  "Maternal Instinct": {
+   "why": "The game's own record lists ACH_KILLED_MATRIARCH.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MATRIARCH"
+    }
+   ]
+  },
+  "The Head-Cutter": {
+   "why": "The game's own record lists ACH_KILLED_HEADCUTTER.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_HEADCUTTER"
+    }
+   ]
+  },
+  "The Coward": {
+   "why": "The game's own record lists ACH_KILLED_TAMARINDO.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_TAMARINDO"
+    }
+   ]
+  },
+  "Back Home": {
+   "why": "The game's own record lists ACH_BACK_HOME.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_BACK_HOME"
+    }
+   ]
+  },
+  "Banquet in Hell": {
+   "why": "The game's own record lists ACH_KILLED_VULTURE.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_VULTURE"
+    }
+   ]
+  },
+  "Seeking Purpose": {
+   "why": "The game's own record lists ACH_DIVINE_HELP.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DIVINE_HELP"
+    }
+   ]
+  },
+  "The Minister": {
+   "why": "The game's own record lists ACH_KILLED_MINISTER.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MINISTER"
+    }
+   ]
+  },
+  "Pseudoscience": {
+   "why": "The game's own record lists ACH_FINISH_SUBWAY_SURVIVAL.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_FINISH_SUBWAY_SURVIVAL"
+    }
+   ]
+  },
+  "Final Destination": {
+   "why": "The game's own record lists ACH_ENTER_THE_TRAIN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_ENTER_THE_TRAIN"
+    }
+   ]
+  },
+  "Stop the Train!": {
+   "why": "The game's own record lists ACH_KILLED_MACHINIST.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MACHINIST"
+    }
+   ]
+  },
+  "The Doctor of Death": {
+   "why": "The game's own record lists ACH_KILLED_DRNINA.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_DRNINA"
+    }
+   ]
+  },
+  "Our Legacy": {
+   "why": "The game's own record lists ACH_FINAL_COUNSELOR.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_FINAL_COUNSELOR"
+    }
+   ]
+  },
+  "Shortcut": {
+   "why": "The game's own record lists ACH_RED_PORTAL.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_RED_PORTAL"
+    }
+   ]
+  },
+  "Stay a While and Listen": {
+   "why": "The game's own record lists ACH_TALK_TO_GHOSTS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_TALK_TO_GHOSTS"
+    }
+   ]
+  },
+  "The Path of Faith": {
+   "why": "The game's own record lists ACH_FAITH_CONSTELLATION.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_FAITH_CONSTELLATION"
+    }
+   ]
+  },
+  "The Path of Discipline": {
+   "why": "The game's own record lists ACH_DISCIPLINE_CONSTELLATION.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DISCIPLINE_CONSTELLATION"
+    }
+   ]
+  },
+  "The Path of Fury": {
+   "why": "The game's own record lists ACH_FURY_CONSTELLATION.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_FURY_CONSTELLATION"
+    }
+   ]
+  },
+  "Tomb Raider": {
+   "why": "The game's own record lists ACH_KILLED_LOOTGOBLIN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_LOOTGOBLIN"
+    }
+   ]
+  },
+  "Art of the Deal": {
+   "why": "The game's own record lists ACH_KILLED_MERCHANT_FIRST_RUN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MERCHANT_FIRST_RUN"
+    }
+   ]
+  },
+  "Truly Blessed": {
+   "why": "The game's own record lists ACH_ALL_BLESSINGS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_ALL_BLESSINGS"
+    }
+   ]
+  },
+  "Solid Foundation": {
+   "why": "The game's own record lists ACH_BLESSING_FOUNDATION.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_BLESSING_FOUNDATION"
+    }
+   ]
+  },
+  "Future Investments": {
+   "why": "The game's own record lists ACH_BLESSING_OF_THE_FUTURE.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_BLESSING_OF_THE_FUTURE"
+    }
+   ]
+  },
+  "Guillotine": {
+   "why": "The game's own record lists ACH_KILLED_HEADCUTTER_LESS_THAN_SEVEN_RUNS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_HEADCUTTER_LESS_THAN_SEVEN_RUNS"
+    }
+   ]
+  },
+  "Red Tie": {
+   "why": "The game's own record lists ACH_KILLED_MINISTER_LESS_THAN_FOURTEEN_RUNS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_MINISTER_LESS_THAN_FOURTEEN_RUNS"
+    }
+   ]
+  },
+  "Swift Rescue": {
+   "why": "The game's own record lists ACH_KILLED_NINA_LESS_THAN_TWENTYONE_RUNS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_KILLED_NINA_LESS_THAN_TWENTYONE_RUNS"
+    }
+   ]
+  },
+  "Tough Guy": {
+   "why": "The game's own record lists ACH_DEAL_30000_DAMAGE_SINGLEHIT.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DEAL_30000_DAMAGE_SINGLEHIT"
+    }
+   ]
+  },
+  "Tough Northeastern": {
+   "why": "The game's own record lists ACH_DEAL_100000_DAMAGE_SINGLEHIT.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DEAL_100000_DAMAGE_SINGLEHIT"
+    }
+   ]
+  },
+  "Hardly Trying": {
+   "why": "The game's own record lists ACH_DEAL_7777777_DAMAGE_SINGLERUN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DEAL_7777777_DAMAGE_SINGLERUN"
+    }
+   ]
+  },
+  "Tryhard": {
+   "why": "The game's own record lists ACH_DEAL_77777777_DAMAGE_SINGLERUN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DEAL_77777777_DAMAGE_SINGLERUN"
+    }
+   ]
+  },
+  "Tryharder": {
+   "why": "The game's own record lists ACH_DEAL_777777777_DAMAGE_SINGLERUN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_DEAL_777777777_DAMAGE_SINGLERUN"
+    }
+   ]
+  },
+  "Tinkerer": {
+   "why": "The game's own record lists ACH_CW_USE_CURRENCY.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_USE_CURRENCY"
+    }
+   ]
+  },
+  "Take Care of your Relics": {
+   "why": "The game's own record lists ACH_CW_MAX_RELIC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_MAX_RELIC"
+    }
+   ]
+  },
+  "Embrace the Dark": {
+   "why": "The game's own record lists ACH_CW_CORRUPT_RELIC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_CORRUPT_RELIC"
+    }
+   ]
+  },
+  "Embrace the Light": {
+   "why": "The game's own record lists ACH_CW_DIVINE_RELIC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_DIVINE_RELIC"
+    }
+   ]
+  },
+  "Into the Abyss": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT1_REGULAR.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT1_REGULAR"
+    }
+   ]
+  },
+  "Deep into the Abyss": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT1_VETERAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT1_VETERAN"
+    }
+   ]
+  },
+  "Friend of the Abyss": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT1_REGULAR_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT1_REGULAR_HC"
+    }
+   ]
+  },
+  "Born in the Abyss": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT1_VETERAN_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT1_VETERAN_HC"
+    }
+   ]
+  },
+  "Untended": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT2_REGULAR.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT2_REGULAR"
+    }
+   ]
+  },
+  "Abandoned": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT2_VETERAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT2_VETERAN"
+    }
+   ]
+  },
+  "Forgotten": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT2_REGULAR_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT2_REGULAR_HC"
+    }
+   ]
+  },
+  "Forsaken": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_WT2_VETERAN_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_WT2_VETERAN_HC"
+    }
+   ]
+  },
+  "Casual Climber": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_10"
+    }
+   ]
+  },
+  "Careful Escalator": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_25"
+    }
+   ]
+  },
+  "Steady Riser": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_50.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_50"
+    }
+   ]
+  },
+  "Determined Floater": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_75.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_75"
+    }
+   ]
+  },
+  "Resolute Scaler": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_100.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_100"
+    }
+   ]
+  },
+  "Relentless Rappeller": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_10_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_10_HC"
+    }
+   ]
+  },
+  "Obsessive Mountaineer": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_25_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_25_HC"
+    }
+   ]
+  },
+  "Ferocious Alpinist": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_50_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_50_HC"
+    }
+   ]
+  },
+  "Primal Climber": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_75_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_75_HC"
+    }
+   ]
+  },
+  "Apocalyptic Ascender": {
+   "why": "The game's own record lists ACH_CW_REACH_HELL_100_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_HELL_100_HC"
+    }
+   ]
+  },
+  "The Dead Man": {
+   "why": "The game's own record lists ACH_CW_DEFEAT_DEAD_MAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_DEFEAT_DEAD_MAN"
+    }
+   ]
+  },
+  "The Mad Man": {
+   "why": "The game's own record lists ACH_CW_DEFEAT_MAD_MAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_DEFEAT_MAD_MAN"
+    }
+   ]
+  },
+  "The Duke of Caxias": {
+   "why": "The game's own record lists ACH_CW_DEFEAT_DUKE.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_DEFEAT_DUKE"
+    }
+   ]
+  },
+  "Duke Hunter": {
+   "why": "The game's own record lists ACH_CW_DEFEAT_DUKE_21_RUNS.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_DEFEAT_DUKE_21_RUNS"
+    }
+   ]
+  },
+  "Unquiet Dreams": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER1"
+    }
+   ]
+  },
+  "Dream Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER8_REGULAR.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER8_REGULAR"
+    }
+   ]
+  },
+  "Fantasy Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER8_VETERAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER8_VETERAN"
+    }
+   ]
+  },
+  "Revery Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER8_REGULAR_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER8_REGULAR_HC"
+    }
+   ]
+  },
+  "Hallucination Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER8_VETERAN_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER8_VETERAN_HC"
+    }
+   ]
+  },
+  "Torment Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER16_REGULAR.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER16_REGULAR"
+    }
+   ]
+  },
+  "Horror Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER16_VETERAN.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER16_VETERAN"
+    }
+   ]
+  },
+  "Agony Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER16_REGULAR_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER16_REGULAR_HC"
+    }
+   ]
+  },
+  "Nightmare Master": {
+   "why": "The game's own record lists ACH_CW_COMPLETE_EN_TIER16_VETERAN_HC.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_COMPLETE_EN_TIER16_VETERAN_HC"
+    }
+   ]
+  },
+  "Student": {
+   "why": "The game's own record lists ACH_CW_REACH_MEMORY_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_MEMORY_20"
+    }
+   ]
+  },
+  "Chronicler": {
+   "why": "The game's own record lists ACH_CW_REACH_MEMORY_50.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_MEMORY_50"
+    }
+   ]
+  },
+  "Historian": {
+   "why": "The game's own record lists ACH_CW_REACH_MEMORY_100.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "player",
+     "field": "_achievementsSaveData.AchievementsUnlocked",
+     "op": "contains",
+     "value": "ACH_CW_REACH_MEMORY_100"
+    }
+   ]
+  }
+ },
+ "not_mapped": {}
+}

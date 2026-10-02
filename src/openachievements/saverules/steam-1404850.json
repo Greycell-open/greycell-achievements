@@ -1,0 +1,2249 @@
+{
+ "game_id": "steam-1404850",
+ "title": "Luck be a Landlord",
+ "verified": "2026-10-01 against a real LBAL-Stats.save: 186 entries = Steam's 186; floors 1-5 won and positions 150-154 true, 155 false; '5 Wins' true with 5 wins; 'Dog' true with 7.5 minutes petting",
+ "saves": [
+  {
+   "id": "stats",
+   "root": "APPDATA",
+   "path": "Godot/app_userdata/Luck be a Landlord",
+   "pattern": "LBAL-Stats.save",
+   "format": "json"
+  }
+ ],
+ "achievements": {
+  "Amethyst": {
+   "why": "The game's own record: achievements_unlocked[0] is Steam's NEW_ACHIEVEMENT_2_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.0",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Anchor": {
+   "why": "The game's own record: achievements_unlocked[1] is Steam's NEW_ACHIEVEMENT_2_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.1",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apple": {
+   "why": "The game's own record: achievements_unlocked[2] is Steam's NEW_ACHIEVEMENT_2_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.2",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Geologist": {
+   "why": "The game's own record: achievements_unlocked[3] is Steam's NEW_ACHIEVEMENT_2_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.3",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Banana": {
+   "why": "The game's own record: achievements_unlocked[4] is Steam's NEW_ACHIEVEMENT_2_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.4",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Banana Peel": {
+   "why": "The game's own record: achievements_unlocked[5] is Steam's NEW_ACHIEVEMENT_2_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.5",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bar of Soap": {
+   "why": "The game's own record: achievements_unlocked[6] is Steam's NEW_ACHIEVEMENT_2_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.6",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bartender": {
+   "why": "The game's own record: achievements_unlocked[7] is Steam's NEW_ACHIEVEMENT_2_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.7",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bear": {
+   "why": "The game's own record: achievements_unlocked[8] is Steam's NEW_ACHIEVEMENT_2_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.8",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Beastmaster": {
+   "why": "The game's own record: achievements_unlocked[9] is Steam's NEW_ACHIEVEMENT_2_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.9",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bee": {
+   "why": "The game's own record: achievements_unlocked[10] is Steam's NEW_ACHIEVEMENT_2_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.10",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Beehive": {
+   "why": "The game's own record: achievements_unlocked[11] is Steam's NEW_ACHIEVEMENT_2_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.11",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Beer": {
+   "why": "The game's own record: achievements_unlocked[12] is Steam's NEW_ACHIEVEMENT_2_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.12",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Big Ore": {
+   "why": "The game's own record: achievements_unlocked[13] is Steam's NEW_ACHIEVEMENT_2_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.13",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Big Urn": {
+   "why": "The game's own record: achievements_unlocked[14] is Steam's NEW_ACHIEVEMENT_2_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.14",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Billionaire": {
+   "why": "The game's own record: achievements_unlocked[15] is Steam's NEW_ACHIEVEMENT_2_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.15",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bounty Hunter": {
+   "why": "The game's own record: achievements_unlocked[16] is Steam's NEW_ACHIEVEMENT_2_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.16",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Breakfast": {
+   "why": "The game's own record: achievements_unlocked[17] is Steam's NEW_ACHIEVEMENT_2_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.17",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bronze Arrow": {
+   "why": "The game's own record: achievements_unlocked[18] is Steam's NEW_ACHIEVEMENT_2_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.18",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Bubble": {
+   "why": "The game's own record: achievements_unlocked[19] is Steam's NEW_ACHIEVEMENT_2_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.19",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Buffing Capsule": {
+   "why": "The game's own record: achievements_unlocked[20] is Steam's NEW_ACHIEVEMENT_2_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.20",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Candy": {
+   "why": "The game's own record: achievements_unlocked[21] is Steam's NEW_ACHIEVEMENT_2_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.21",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Card Shark": {
+   "why": "The game's own record: achievements_unlocked[22] is Steam's NEW_ACHIEVEMENT_2_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.22",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Cat": {
+   "why": "The game's own record: achievements_unlocked[23] is Steam's NEW_ACHIEVEMENT_2_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.23",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Cheese": {
+   "why": "The game's own record: achievements_unlocked[24] is Steam's NEW_ACHIEVEMENT_2_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.24",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Chef": {
+   "why": "The game's own record: achievements_unlocked[25] is Steam's NEW_ACHIEVEMENT_2_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.25",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Chemical Seven": {
+   "why": "The game's own record: achievements_unlocked[26] is Steam's NEW_ACHIEVEMENT_2_26.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.26",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Cherry": {
+   "why": "The game's own record: achievements_unlocked[27] is Steam's NEW_ACHIEVEMENT_2_27.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.27",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Chick": {
+   "why": "The game's own record: achievements_unlocked[28] is Steam's NEW_ACHIEVEMENT_2_28.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.28",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Chicken": {
+   "why": "The game's own record: achievements_unlocked[29] is Steam's NEW_ACHIEVEMENT_2_29.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.29",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Clubs": {
+   "why": "The game's own record: achievements_unlocked[30] is Steam's NEW_ACHIEVEMENT_2_30.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.30",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Coal": {
+   "why": "The game's own record: achievements_unlocked[31] is Steam's NEW_ACHIEVEMENT_2_31.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.31",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Coconut": {
+   "why": "The game's own record: achievements_unlocked[32] is Steam's NEW_ACHIEVEMENT_3_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.32",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Coconut Half": {
+   "why": "The game's own record: achievements_unlocked[33] is Steam's NEW_ACHIEVEMENT_3_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.33",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Coin": {
+   "why": "The game's own record: achievements_unlocked[34] is Steam's NEW_ACHIEVEMENT_3_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.34",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Comedian": {
+   "why": "The game's own record: achievements_unlocked[35] is Steam's NEW_ACHIEVEMENT_3_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.35",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Cow": {
+   "why": "The game's own record: achievements_unlocked[36] is Steam's NEW_ACHIEVEMENT_3_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.36",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Crab": {
+   "why": "The game's own record: achievements_unlocked[37] is Steam's NEW_ACHIEVEMENT_3_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.37",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Credits": {
+   "why": "The game's own record: achievements_unlocked[38] is Steam's NEW_ACHIEVEMENT_3_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.38",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Crow": {
+   "why": "The game's own record: achievements_unlocked[39] is Steam's NEW_ACHIEVEMENT_3_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.39",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Cultist": {
+   "why": "The game's own record: achievements_unlocked[40] is Steam's NEW_ACHIEVEMENT_3_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.40",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Three-Sided Die": {
+   "why": "The game's own record: achievements_unlocked[41] is Steam's NEW_ACHIEVEMENT_3_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.41",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Five-Sided Die": {
+   "why": "The game's own record: achievements_unlocked[42] is Steam's NEW_ACHIEVEMENT_3_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.42",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Dame": {
+   "why": "The game's own record: achievements_unlocked[43] is Steam's NEW_ACHIEVEMENT_3_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.43",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Diamond": {
+   "why": "The game's own record: achievements_unlocked[44] is Steam's NEW_ACHIEVEMENT_3_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.44",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Diamonds": {
+   "why": "The game's own record: achievements_unlocked[45] is Steam's NEW_ACHIEVEMENT_3_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.45",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Diver": {
+   "why": "The game's own record: achievements_unlocked[46] is Steam's NEW_ACHIEVEMENT_3_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.46",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Dog": {
+   "why": "The game's own record: achievements_unlocked[47] is Steam's NEW_ACHIEVEMENT_3_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.47",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Dove": {
+   "why": "The game's own record: achievements_unlocked[48] is Steam's NEW_ACHIEVEMENT_3_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.48",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Dwarf": {
+   "why": "The game's own record: achievements_unlocked[49] is Steam's NEW_ACHIEVEMENT_3_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.49",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Egg": {
+   "why": "The game's own record: achievements_unlocked[50] is Steam's NEW_ACHIEVEMENT_3_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.50",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Eldritch Creature": {
+   "why": "The game's own record: achievements_unlocked[51] is Steam's NEW_ACHIEVEMENT_3_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.51",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Emerald": {
+   "why": "The game's own record: achievements_unlocked[52] is Steam's NEW_ACHIEVEMENT_3_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.52",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Essence Capsule": {
+   "why": "The game's own record: achievements_unlocked[53] is Steam's NEW_ACHIEVEMENT_3_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.53",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Essences": {
+   "why": "The game's own record: achievements_unlocked[54] is Steam's NEW_ACHIEVEMENT_3_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.54",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Farmer": {
+   "why": "The game's own record: achievements_unlocked[55] is Steam's NEW_ACHIEVEMENT_3_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.55",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Flower": {
+   "why": "The game's own record: achievements_unlocked[56] is Steam's NEW_ACHIEVEMENT_3_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.56",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Frozen Fossil": {
+   "why": "The game's own record: achievements_unlocked[57] is Steam's NEW_ACHIEVEMENT_3_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.57",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Gambler": {
+   "why": "The game's own record: achievements_unlocked[58] is Steam's NEW_ACHIEVEMENT_3_26.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.58",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "General Zaroff": {
+   "why": "The game's own record: achievements_unlocked[59] is Steam's NEW_ACHIEVEMENT_3_27.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.59",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Golden Arrow": {
+   "why": "The game's own record: achievements_unlocked[60] is Steam's NEW_ACHIEVEMENT_3_28.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.60",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Golden Egg": {
+   "why": "The game's own record: achievements_unlocked[61] is Steam's NEW_ACHIEVEMENT_3_29.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.61",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Goldfish": {
+   "why": "The game's own record: achievements_unlocked[62] is Steam's NEW_ACHIEVEMENT_3_30.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.62",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Golem": {
+   "why": "The game's own record: achievements_unlocked[63] is Steam's NEW_ACHIEVEMENT_3_31.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.63",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Goose": {
+   "why": "The game's own record: achievements_unlocked[64] is Steam's NEW_ACHIEVEMENT_4_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.64",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence": {
+   "why": "The game's own record: achievements_unlocked[65] is Steam's NEW_ACHIEVEMENT_4_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.65",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hearts": {
+   "why": "The game's own record: achievements_unlocked[66] is Steam's NEW_ACHIEVEMENT_4_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.66",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Destruction": {
+   "why": "The game's own record: achievements_unlocked[67] is Steam's NEW_ACHIEVEMENT_4_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.67",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Draining": {
+   "why": "The game's own record: achievements_unlocked[68] is Steam's NEW_ACHIEVEMENT_4_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.68",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Emptiness": {
+   "why": "The game's own record: achievements_unlocked[69] is Steam's NEW_ACHIEVEMENT_4_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.69",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Hoarding": {
+   "why": "The game's own record: achievements_unlocked[70] is Steam's NEW_ACHIEVEMENT_4_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.70",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Midas": {
+   "why": "The game's own record: achievements_unlocked[71] is Steam's NEW_ACHIEVEMENT_4_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.71",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Tedium": {
+   "why": "The game's own record: achievements_unlocked[72] is Steam's NEW_ACHIEVEMENT_4_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.72",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hex of Thievery": {
+   "why": "The game's own record: achievements_unlocked[73] is Steam's NEW_ACHIEVEMENT_4_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.73",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Highlander": {
+   "why": "The game's own record: achievements_unlocked[74] is Steam's NEW_ACHIEVEMENT_4_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.74",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Honey": {
+   "why": "The game's own record: achievements_unlocked[75] is Steam's NEW_ACHIEVEMENT_4_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.75",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hooligan": {
+   "why": "The game's own record: achievements_unlocked[76] is Steam's NEW_ACHIEVEMENT_4_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.76",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Hustling Capsule": {
+   "why": "The game's own record: achievements_unlocked[77] is Steam's NEW_ACHIEVEMENT_4_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.77",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Item Capsule": {
+   "why": "The game's own record: achievements_unlocked[78] is Steam's NEW_ACHIEVEMENT_4_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.78",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Jellyfish": {
+   "why": "The game's own record: achievements_unlocked[79] is Steam's NEW_ACHIEVEMENT_4_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.79",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Joker": {
+   "why": "The game's own record: achievements_unlocked[80] is Steam's NEW_ACHIEVEMENT_4_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.80",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Key": {
+   "why": "The game's own record: achievements_unlocked[81] is Steam's NEW_ACHIEVEMENT_4_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.81",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "King Midas": {
+   "why": "The game's own record: achievements_unlocked[82] is Steam's NEW_ACHIEVEMENT_4_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.82",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Landlord Defeated": {
+   "why": "The game's own record: achievements_unlocked[83] is Steam's NEW_ACHIEVEMENT_4_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.83",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Light Bulb": {
+   "why": "The game's own record: achievements_unlocked[84] is Steam's NEW_ACHIEVEMENT_4_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.84",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Lockbox": {
+   "why": "The game's own record: achievements_unlocked[85] is Steam's NEW_ACHIEVEMENT_4_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.85",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Wealthy Capsule": {
+   "why": "The game's own record: achievements_unlocked[86] is Steam's NEW_ACHIEVEMENT_4_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.86",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Magic Key": {
+   "why": "The game's own record: achievements_unlocked[87] is Steam's NEW_ACHIEVEMENT_4_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.87",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Magpie": {
+   "why": "The game's own record: achievements_unlocked[88] is Steam's NEW_ACHIEVEMENT_4_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.88",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Martini": {
+   "why": "The game's own record: achievements_unlocked[89] is Steam's NEW_ACHIEVEMENT_4_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.89",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Matryoshka Doll": {
+   "why": "The game's own record: achievements_unlocked[90] is Steam's NEW_ACHIEVEMENT_4_26.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.90",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Mega Chest": {
+   "why": "The game's own record: achievements_unlocked[91] is Steam's NEW_ACHIEVEMENT_4_27.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.91",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Midas Bomb": {
+   "why": "The game's own record: achievements_unlocked[92] is Steam's NEW_ACHIEVEMENT_4_28.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.92",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Milk": {
+   "why": "The game's own record: achievements_unlocked[93] is Steam's NEW_ACHIEVEMENT_4_29.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.93",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Mine": {
+   "why": "The game's own record: achievements_unlocked[94] is Steam's NEW_ACHIEVEMENT_4_30.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.94",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Miner": {
+   "why": "The game's own record: achievements_unlocked[95] is Steam's NEW_ACHIEVEMENT_4_31.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.95",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Monkey": {
+   "why": "The game's own record: achievements_unlocked[96] is Steam's NEW_ACHIEVEMENT_5_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.96",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Moon": {
+   "why": "The game's own record: achievements_unlocked[97] is Steam's NEW_ACHIEVEMENT_5_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.97",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Mouse": {
+   "why": "The game's own record: achievements_unlocked[98] is Steam's NEW_ACHIEVEMENT_5_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.98",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Mrs. Fruit": {
+   "why": "The game's own record: achievements_unlocked[99] is Steam's NEW_ACHIEVEMENT_5_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.99",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Ninja": {
+   "why": "The game's own record: achievements_unlocked[100] is Steam's NEW_ACHIEVEMENT_5_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.100",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Omelette": {
+   "why": "The game's own record: achievements_unlocked[101] is Steam's NEW_ACHIEVEMENT_5_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.101",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Orange": {
+   "why": "The game's own record: achievements_unlocked[102] is Steam's NEW_ACHIEVEMENT_5_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.102",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Ore": {
+   "why": "The game's own record: achievements_unlocked[103] is Steam's NEW_ACHIEVEMENT_5_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.103",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Owl": {
+   "why": "The game's own record: achievements_unlocked[104] is Steam's NEW_ACHIEVEMENT_5_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.104",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Oyster": {
+   "why": "The game's own record: achievements_unlocked[105] is Steam's NEW_ACHIEVEMENT_5_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.105",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Peach": {
+   "why": "The game's own record: achievements_unlocked[106] is Steam's NEW_ACHIEVEMENT_5_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.106",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Pear": {
+   "why": "The game's own record: achievements_unlocked[107] is Steam's NEW_ACHIEVEMENT_5_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.107",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Pearl": {
+   "why": "The game's own record: achievements_unlocked[108] is Steam's NEW_ACHIEVEMENT_5_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.108",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Piñata": {
+   "why": "The game's own record: achievements_unlocked[109] is Steam's NEW_ACHIEVEMENT_5_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.109",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Pirate": {
+   "why": "The game's own record: achievements_unlocked[110] is Steam's NEW_ACHIEVEMENT_5_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.110",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Present": {
+   "why": "The game's own record: achievements_unlocked[111] is Steam's NEW_ACHIEVEMENT_5_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.111",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Pufferfish": {
+   "why": "The game's own record: achievements_unlocked[112] is Steam's NEW_ACHIEVEMENT_5_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.112",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Rabbit": {
+   "why": "The game's own record: achievements_unlocked[113] is Steam's NEW_ACHIEVEMENT_5_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.113",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Rabbit Fluff": {
+   "why": "The game's own record: achievements_unlocked[114] is Steam's NEW_ACHIEVEMENT_5_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.114",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Rain": {
+   "why": "The game's own record: achievements_unlocked[115] is Steam's NEW_ACHIEVEMENT_5_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.115",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Lucky Capsule": {
+   "why": "The game's own record: achievements_unlocked[116] is Steam's NEW_ACHIEVEMENT_5_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.116",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Removal Capsule": {
+   "why": "The game's own record: achievements_unlocked[117] is Steam's NEW_ACHIEVEMENT_5_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.117",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Reroll Capsule": {
+   "why": "The game's own record: achievements_unlocked[118] is Steam's NEW_ACHIEVEMENT_5_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.118",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Robin Hood": {
+   "why": "The game's own record: achievements_unlocked[119] is Steam's NEW_ACHIEVEMENT_5_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.119",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Ruby": {
+   "why": "The game's own record: achievements_unlocked[120] is Steam's NEW_ACHIEVEMENT_5_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.120",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Safe": {
+   "why": "The game's own record: achievements_unlocked[121] is Steam's NEW_ACHIEVEMENT_5_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.121",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Sand Dollar": {
+   "why": "The game's own record: achievements_unlocked[122] is Steam's NEW_ACHIEVEMENT_5_26.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.122",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Sapphire": {
+   "why": "The game's own record: achievements_unlocked[123] is Steam's NEW_ACHIEVEMENT_5_27.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.123",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Seed": {
+   "why": "The game's own record: achievements_unlocked[124] is Steam's NEW_ACHIEVEMENT_5_28.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.124",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Shiny Pebble": {
+   "why": "The game's own record: achievements_unlocked[125] is Steam's NEW_ACHIEVEMENT_5_29.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.125",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Silver Arrow": {
+   "why": "The game's own record: achievements_unlocked[126] is Steam's NEW_ACHIEVEMENT_5_30.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.126",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Sloth": {
+   "why": "The game's own record: achievements_unlocked[127] is Steam's NEW_ACHIEVEMENT_5_31.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.127",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Snail": {
+   "why": "The game's own record: achievements_unlocked[128] is Steam's NEW_ACHIEVEMENT_6_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.128",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Spades": {
+   "why": "The game's own record: achievements_unlocked[129] is Steam's NEW_ACHIEVEMENT_6_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.129",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Spirit": {
+   "why": "The game's own record: achievements_unlocked[130] is Steam's NEW_ACHIEVEMENT_6_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.130",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Strawberry": {
+   "why": "The game's own record: achievements_unlocked[131] is Steam's NEW_ACHIEVEMENT_6_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.131",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Sun": {
+   "why": "The game's own record: achievements_unlocked[132] is Steam's NEW_ACHIEVEMENT_6_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.132",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Target": {
+   "why": "The game's own record: achievements_unlocked[133] is Steam's NEW_ACHIEVEMENT_6_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.133",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Tedium Capsule": {
+   "why": "The game's own record: achievements_unlocked[134] is Steam's NEW_ACHIEVEMENT_6_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.134",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Thief": {
+   "why": "The game's own record: achievements_unlocked[135] is Steam's NEW_ACHIEVEMENT_6_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.135",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Time Capsule": {
+   "why": "The game's own record: achievements_unlocked[136] is Steam's NEW_ACHIEVEMENT_6_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.136",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Toddler": {
+   "why": "The game's own record: achievements_unlocked[137] is Steam's NEW_ACHIEVEMENT_6_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.137",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Tomb": {
+   "why": "The game's own record: achievements_unlocked[138] is Steam's NEW_ACHIEVEMENT_6_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.138",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Treasure Chest": {
+   "why": "The game's own record: achievements_unlocked[139] is Steam's NEW_ACHIEVEMENT_6_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.139",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Turtle": {
+   "why": "The game's own record: achievements_unlocked[140] is Steam's NEW_ACHIEVEMENT_6_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.140",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Urn": {
+   "why": "The game's own record: achievements_unlocked[141] is Steam's NEW_ACHIEVEMENT_6_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.141",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Void Creature": {
+   "why": "The game's own record: achievements_unlocked[142] is Steam's NEW_ACHIEVEMENT_6_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.142",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Void Fruit": {
+   "why": "The game's own record: achievements_unlocked[143] is Steam's NEW_ACHIEVEMENT_6_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.143",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Void Stone": {
+   "why": "The game's own record: achievements_unlocked[144] is Steam's NEW_ACHIEVEMENT_6_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.144",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Watermelon": {
+   "why": "The game's own record: achievements_unlocked[145] is Steam's NEW_ACHIEVEMENT_6_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.145",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Wildcard": {
+   "why": "The game's own record: achievements_unlocked[146] is Steam's NEW_ACHIEVEMENT_6_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.146",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Wine": {
+   "why": "The game's own record: achievements_unlocked[147] is Steam's NEW_ACHIEVEMENT_6_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.147",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Witch": {
+   "why": "The game's own record: achievements_unlocked[148] is Steam's NEW_ACHIEVEMENT_6_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.148",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Wolf": {
+   "why": "The game's own record: achievements_unlocked[149] is Steam's NEW_ACHIEVEMENT_6_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.149",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 1": {
+   "why": "The game's own record: achievements_unlocked[150] is Steam's NEW_ACHIEVEMENT_6_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.150",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 2": {
+   "why": "The game's own record: achievements_unlocked[151] is Steam's NEW_ACHIEVEMENT_6_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.151",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 3": {
+   "why": "The game's own record: achievements_unlocked[152] is Steam's NEW_ACHIEVEMENT_6_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.152",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 4": {
+   "why": "The game's own record: achievements_unlocked[153] is Steam's NEW_ACHIEVEMENT_6_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.153",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 5": {
+   "why": "The game's own record: achievements_unlocked[154] is Steam's NEW_ACHIEVEMENT_6_26.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.154",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 6": {
+   "why": "The game's own record: achievements_unlocked[155] is Steam's NEW_ACHIEVEMENT_6_27.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.155",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 7": {
+   "why": "The game's own record: achievements_unlocked[156] is Steam's NEW_ACHIEVEMENT_6_28.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.156",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 8": {
+   "why": "The game's own record: achievements_unlocked[157] is Steam's NEW_ACHIEVEMENT_6_29.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.157",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 9": {
+   "why": "The game's own record: achievements_unlocked[158] is Steam's NEW_ACHIEVEMENT_6_30.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.158",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 10": {
+   "why": "The game's own record: achievements_unlocked[159] is Steam's NEW_ACHIEVEMENT_6_31.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.159",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 11": {
+   "why": "The game's own record: achievements_unlocked[160] is Steam's NEW_ACHIEVEMENT_7_0.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.160",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 12": {
+   "why": "The game's own record: achievements_unlocked[161] is Steam's NEW_ACHIEVEMENT_7_1.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.161",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 13": {
+   "why": "The game's own record: achievements_unlocked[162] is Steam's NEW_ACHIEVEMENT_7_2.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.162",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 14": {
+   "why": "The game's own record: achievements_unlocked[163] is Steam's NEW_ACHIEVEMENT_7_3.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.163",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 15": {
+   "why": "The game's own record: achievements_unlocked[164] is Steam's NEW_ACHIEVEMENT_7_4.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.164",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 16": {
+   "why": "The game's own record: achievements_unlocked[165] is Steam's NEW_ACHIEVEMENT_7_5.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.165",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 17": {
+   "why": "The game's own record: achievements_unlocked[166] is Steam's NEW_ACHIEVEMENT_7_6.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.166",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 18": {
+   "why": "The game's own record: achievements_unlocked[167] is Steam's NEW_ACHIEVEMENT_7_7.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.167",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 19": {
+   "why": "The game's own record: achievements_unlocked[168] is Steam's NEW_ACHIEVEMENT_7_8.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.168",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Apartment Floor 20": {
+   "why": "The game's own record: achievements_unlocked[169] is Steam's NEW_ACHIEVEMENT_7_9.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.169",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "5 Wins": {
+   "why": "The game's own record: achievements_unlocked[170] is Steam's NEW_ACHIEVEMENT_7_10.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.170",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "10 Wins": {
+   "why": "The game's own record: achievements_unlocked[171] is Steam's NEW_ACHIEVEMENT_7_11.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.171",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "25 Wins": {
+   "why": "The game's own record: achievements_unlocked[172] is Steam's NEW_ACHIEVEMENT_7_12.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.172",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "50 Wins": {
+   "why": "The game's own record: achievements_unlocked[173] is Steam's NEW_ACHIEVEMENT_7_13.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.173",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "100 Wins": {
+   "why": "The game's own record: achievements_unlocked[174] is Steam's NEW_ACHIEVEMENT_7_14.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.174",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "250 Wins": {
+   "why": "The game's own record: achievements_unlocked[175] is Steam's NEW_ACHIEVEMENT_7_15.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.175",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "500 Wins": {
+   "why": "The game's own record: achievements_unlocked[176] is Steam's NEW_ACHIEVEMENT_7_16.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.176",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "777 Wins": {
+   "why": "The game's own record: achievements_unlocked[177] is Steam's NEW_ACHIEVEMENT_7_17.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.177",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (2)": {
+   "why": "The game's own record: achievements_unlocked[178] is Steam's NEW_ACHIEVEMENT_7_18.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.178",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (3)": {
+   "why": "The game's own record: achievements_unlocked[179] is Steam's NEW_ACHIEVEMENT_7_19.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.179",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (4)": {
+   "why": "The game's own record: achievements_unlocked[180] is Steam's NEW_ACHIEVEMENT_7_20.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.180",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (5)": {
+   "why": "The game's own record: achievements_unlocked[181] is Steam's NEW_ACHIEVEMENT_7_21.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.181",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (10)": {
+   "why": "The game's own record: achievements_unlocked[182] is Steam's NEW_ACHIEVEMENT_7_22.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.182",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (25)": {
+   "why": "The game's own record: achievements_unlocked[183] is Steam's NEW_ACHIEVEMENT_7_23.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.183",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (50)": {
+   "why": "The game's own record: achievements_unlocked[184] is Steam's NEW_ACHIEVEMENT_7_24.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.184",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  },
+  "Guillotine Essence (77)": {
+   "why": "The game's own record: achievements_unlocked[185] is Steam's NEW_ACHIEVEMENT_7_25.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "stats",
+     "field": "achievements_unlocked.185",
+     "op": "==",
+     "value": 1
+    }
+   ]
+  }
+ },
+ "not_mapped": {}
+}

@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "id": "cave-story-community",
+  "name": "Cave Story (community set)",
+  "version": "1.0.0",
+  "game_ids": ["cave-story"],
+  "games": [{ "id": "cave-story", "title": "Cave Story", "platform": "PC (freeware)" }],
+  "authors": ["Open Achievements example"],
+  "license": "CC0-1.0",
+  "supported_adapters": ["executable", "manual"]
+}

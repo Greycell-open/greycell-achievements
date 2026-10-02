@@ -1,0 +1,23 @@
+# Self-host Greycell Achievements:  docker compose up -d
+# Put it behind HTTPS (see deploy/Caddyfile.example); clients refuse plain
+# http:// to anything but localhost.
+services:
+  open-achievements:
+    build: .
+    image: open-achievements:latest
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      # open: anyone can sign up | first-only: just you | closed: nobody new
+      OA_REGISTRATION: "first-only"
+      OA_MAX_EVENTS: "250000"
+      OA_TRUSTED_PROXIES: "*"
+    volumes:
+      # A named volume, so Docker creates it owned by the image's non-root
+      # user. (A ./data bind mount that does not exist yet is created by
+      # Docker as root, and the server could not write its database.)
+      - oa-data:/data
+
+volumes:
+  oa-data:

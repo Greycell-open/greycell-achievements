@@ -1,0 +1,6 @@
+Greycell Achievements 1.0
+- Installs for your user, no administrator, and updates itself.
+- Link Steam, PlayStation, Xbox, GOG and RetroAchievements in one menu.
+- Filter your library by platform and console.
+- A status bar shows account syncs while you browse.
+- About shows your version, credits and a Check for updates button.

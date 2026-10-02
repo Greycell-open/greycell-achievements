@@ -1,0 +1,5 @@
+# achievements.example.com: Caddy obtains the certificate itself.
+achievements.example.com {
+	encode gzip
+	reverse_proxy 127.0.0.1:8787
+}

@@ -1,0 +1,17 @@
+[
+  { "id": "first-launch", "name": "Hello, Mimiga Village", "description": "Start the game.", "points": 5,
+    "rules": [{ "signal": "launch" }] },
+  { "id": "one-hour", "name": "Getting Comfortable", "description": "Play for an hour in total.", "points": 10,
+    "rules": [{ "signal": "playtime", "minutes": 60 }] },
+  { "id": "five-sessions", "name": "Back Again", "description": "Play on five separate occasions.", "points": 10,
+    "rules": [{ "signal": "sessions", "count": 5 }] },
+  { "id": "balrog", "name": "Huzzah!", "description": "Defeat Balrog for the first time.", "points": 15,
+    "category": "boss" },
+  { "id": "polar-star", "name": "Standard Issue", "description": "Get the Polar Star.", "points": 10 },
+  { "id": "curly-saved", "name": "Nobody Left Behind", "description": "Save Curly Brace.", "points": 50,
+    "hidden": true },
+  { "id": "missiles", "name": "Missile Collector", "description": "Collect missile expansions.", "points": 20,
+    "progress": { "type": "counter", "target": 10, "unit": "expansion" } },
+  { "id": "sacred-grounds", "name": "Into the Sacred Grounds", "description": "Finish Bloodstained Sanctuary.",
+    "points": 100, "hidden": true }
+]

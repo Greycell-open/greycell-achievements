@@ -1,0 +1,6 @@
+# Runtime dependencies of the sync server and local web UI. Compiled into
+# server.lock by scripts/lock.sh; edit this file, never the lock.
+fastapi>=0.110
+uvicorn>=0.29
+# Build backend, pinned so installing the project itself is reproducible too.
+setuptools>=69

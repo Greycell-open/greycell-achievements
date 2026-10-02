@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <base href="__OA_BASE__">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="oa-local-token" content="__OA_LOCAL_TOKEN__">
+  <meta name="theme-color" content="#0a0918">
+  <meta name="description" content="Greycell Achievements: one achievement library for every game, including the ones no platform tracks. Free, open source, self-hostable.">
+  <title>Greycell Achievements</title>
+  <link rel="icon" href="assets/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="icon" type="image/png" href="assets/favicon-32.png" sizes="32x32">
+  <link rel="apple-touch-icon" href="assets/logo-192.png">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./"><img src="assets/logo-64.png" alt="" width="36" height="36"><span>Greycell Achievements</span></a>
+    <div class="top-actions" id="topActions"></div>
+  </header>
+
+  <div class="sync-bar" id="syncBar" hidden></div>
+
+  <p class="update-note" id="updateNote" hidden></p>
+  <main id="app">
+    <section class="intro" id="intro" hidden>
+      <img class="intro-logo" src="assets/logo-192.png" alt="" width="120" height="120">
+      <h1>Every game deserves achievements.</h1>
+      <p>One library for Steam, RetroAchievements, and the games no platform tracks: DRM-free copies, old installs, emulators, your own challenges.
+        It keeps working offline, it is yours to export, and you can run it on your own server.</p>
+      <div class="auth" id="auth">
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab on" data-tab="login" role="tab">Sign in</button>
+          <button type="button" class="tab" data-tab="register" role="tab" id="registerTab">Create account</button>
+        </div>
+        <form id="authForm" autocomplete="on">
+          <label>Username <input name="username" autocomplete="username" required minlength="3" maxlength="32"></label>
+          <label>Password <input name="password" type="password" autocomplete="current-password" required minlength="1" maxlength="200"></label>
+          <p class="hint" id="pwHint" hidden>At least 10 characters. It is stored only as a scrypt hash.</p>
+          <button type="submit" class="primary" id="authSubmit">Sign in</button>
+          <p class="error" id="authError" role="alert"></p>
+        </form>
+      </div>
+      <div class="site-stats" id="siteStats" hidden></div>
+      <ul class="promises">
+        <li><strong>Local first.</strong> Your profile is a folder of plain JSON on your own computer. This server is a copy, never the only one.</li>
+        <li><strong>Free, forever.</strong> Open source, no ads, no selling your data, no premium tier.</li>
+        <li><strong>Honest.</strong> Every unlock says where it came from: imported from a platform, played, or read from a save. Nothing is ticked by hand.</li>
+      </ul>
+    </section>
+
+    <section id="library" hidden>
+      <div class="profile-head" id="profileHead"></div>
+      <div class="dash" id="dash" hidden>
+        <section class="dash-panel" aria-labelledby="nowTitle">
+          <h2 id="nowTitle">Now playing <span class="live" id="liveDot" title="Watching your games">live</span></h2>
+          <div id="nowPlaying"></div>
+        </section>
+        <section class="dash-panel" aria-labelledby="recentTitle">
+          <h2 id="recentTitle">Recent unlocks</h2>
+          <ol class="recent" id="recentUnlocks"></ol>
+        </section>
+      </div>
+      <div class="summary" id="summary"></div>
+      <div class="toolbar">
+        <input type="search" id="search" placeholder="Search games" aria-label="Search games">
+        <select id="filter" aria-label="Show">
+          <option value="home">By status</option>
+          <option value="all">All games</option>
+          <option value="complete">Platinum</option>
+          <optgroup label="Status">
+            <option value="s:playing">Playing</option>
+            <option value="s:backlog">Backlog</option>
+            <option value="s:wishlist">Wishlist</option>
+            <option value="s:completed">Completed</option>
+            <option value="s:dropped">Dropped</option>
+          </optgroup>
+          <optgroup label="Achievements">
+            <option value="started">Some unlocked</option>
+            <option value="untouched">None unlocked</option>
+          </optgroup>
+        </select>
+        <select id="platform" aria-label="Platform"><option value="">All platforms</option></select>
+        <select id="sort" aria-label="Sort">
+          <option value="recent">Recently played</option>
+          <option value="name">Name</option>
+          <option value="progress">Achievement progress</option>
+        </select>
+        <label class="toggle"><input type="checkbox" id="artwork"> Show platform artwork</label>
+      </div>
+      <div id="shelves"></div>
+      <div class="games" id="games"></div>
+      <p class="empty" id="empty" hidden></p>
+    </section>
+
+    <section id="account" hidden></section>
+  </main>
+
+  <dialog id="gameDialog" aria-labelledby="gameTitle">
+    <div class="dialog-head">
+      <div><h2 id="gameTitle"></h2><p id="gameMeta"></p>
+        <label class="inline" id="gameStatusWrap" hidden>Status
+          <select id="gameStatus">
+            <option value="none">No status</option><option value="playing">Playing</option>
+            <option value="backlog">Backlog</option><option value="wishlist">Wishlist</option>
+            <option value="completed">Completed</option><option value="dropped">Dropped</option>
+          </select></label>
+        <label class="inline" id="revealWrap" hidden><input type="checkbox" id="revealHidden"> Show hidden achievements</label></div>
+      <button type="button" class="close" id="closeDialog" aria-label="Close">&times;</button>
+    </div>
+    <p class="saves-found" id="savesFound" hidden></p>
+    <div class="achievements" id="achievementList"></div>
+  </dialog>
+
+  <dialog id="addDialog" aria-labelledby="addTitle">
+    <div class="dialog-head">
+      <div><h2 id="addTitle">Add games</h2><p id="catalogInfo">Search the Steam catalogue</p></div>
+      <button type="button" class="close" id="closeAdd" aria-label="Close">&times;</button>
+    </div>
+    <div class="add-controls">
+      <input type="search" id="catalogSearch" placeholder="Game title" aria-label="Game title" autocomplete="off">
+      <select id="addStatus" aria-label="Add as">
+        <option value="backlog">Add to backlog</option><option value="playing">Add as playing</option>
+        <option value="wishlist">Add to wishlist</option><option value="completed">Add as completed</option>
+      </select>
+    </div>
+    <div class="results" id="catalogResults"></div>
+  </dialog>
+
+  <dialog id="steamDialog" aria-labelledby="steamTitle">
+    <div class="dialog-head">
+      <div><h2 id="steamTitle">Steam</h2><p>Bring in your Steam games and achievements.</p></div>
+      <button type="button" class="close" id="closeSteam" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body" id="steamBody"></div>
+  </dialog>
+
+  <dialog id="xboxDialog" aria-labelledby="xboxTitle">
+    <div class="dialog-head">
+      <div><h2 id="xboxTitle">Xbox</h2><p>Bring in your Xbox games and achievements, read only.</p></div>
+      <button type="button" class="close" id="closeXbox" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body" id="xboxBody"></div>
+  </dialog>
+
+  <dialog id="raDialog" aria-labelledby="raTitle">
+    <div class="dialog-head">
+      <div><h2 id="raTitle">RetroAchievements</h2><p>Bring in your RetroAchievements games and unlocks, read only.</p></div>
+      <button type="button" class="close" id="closeRa" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body" id="raBody"></div>
+  </dialog>
+
+  <dialog id="gogDialog" aria-labelledby="gogTitle">
+    <div class="dialog-head">
+      <div><h2 id="gogTitle">GOG</h2><p>Bring in your GOG games and achievements, read only.</p></div>
+      <button type="button" class="close" id="closeGog" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body" id="gogBody"></div>
+  </dialog>
+
+  <dialog id="psnDialog" aria-labelledby="psnTitle">
+    <div class="dialog-head">
+      <div><h2 id="psnTitle">PlayStation</h2><p>Bring in your PlayStation games and trophies, read only.</p></div>
+      <button type="button" class="close" id="closePsn" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body" id="psnBody"></div>
+  </dialog>
+
+  <dialog id="soundDialog" aria-labelledby="soundTitle">
+    <div class="dialog-head">
+      <div><h2 id="soundTitle">Popups and sounds</h2><p>What happens on screen when you unlock something.</p></div>
+      <button type="button" class="close" id="closeSound" aria-label="Close">&times;</button>
+    </div>
+    <div class="sound-body" id="soundBody"></div>
+  </dialog>
+
+  <dialog id="aboutDialog" aria-labelledby="aboutTitle">
+    <div class="dialog-head">
+      <div class="about-head"><img src="assets/logo-64.png" alt="" width="48" height="48">
+        <div><h2 id="aboutTitle">Greycell Achievements</h2><p id="aboutVersion">Version</p></div></div>
+      <button type="button" class="close" id="closeAbout" aria-label="Close">&times;</button>
+    </div>
+    <div class="steam-body about-body">
+      <div class="steam-step">
+        <p>One achievement library for every game you play, kept on your own PC.</p>
+        <p>Made by <strong>Zein Alaouie</strong>, published by <strong>Greycell Open</strong>.
+          Free and open source under the <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noreferrer noopener">GNU AGPL-3.0</a>.</p>
+        <p><a href="https://greycell.app/achievements/" target="_blank" rel="noreferrer noopener">greycell.app/achievements</a> ·
+          <a href="https://github.com/greycell-open/greycell-achievements" target="_blank" rel="noreferrer noopener">Source on GitHub</a></p>
+        <p id="aboutUpdate" class="muted"></p>
+        <div class="row"><button type="button" id="checkUpdate">Check for updates</button></div>
+      </div>
+      <div class="steam-step">
+        <h3>Credits</h3>
+        <ul class="credits">
+          <li><strong>Achievement data</strong> comes from the platforms you link: Steam, PlayStation, Xbox, GOG and
+            RetroAchievements, whose achievement sets are made by the RetroAchievements community. Names, icons and
+            trademarks belong to their owners. Greycell Achievements is not affiliated with or endorsed by any of them.</li>
+          <li><strong>Sounds</strong> are made for this app, synthesised in its own code.</li>
+          <li><strong>Built with</strong> Python, FastAPI, Starlette, Pydantic and Uvicorn; packaged with PyInstaller;
+            installed with Inno Setup by Jordan Russell and Martijn Laan.</li>
+        </ul>
+      </div>
+    </div>
+  </dialog>
+
+  <footer class="foot">
+    Greycell Achievements <span id="footVersion"></span> · Free and open source ·
+    <button type="button" class="link" id="openAbout">About</button><span id="apiLink"> ·
+    <a href="docs">API</a></span>
+  </footer>
+  <script src="assets/app.js"></script>
+</body>
+</html>
