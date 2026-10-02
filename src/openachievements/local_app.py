@@ -293,8 +293,13 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         stamp = hashlib.sha1(repr(profile.log.signature()).encode()).hexdigest()[:16]
         games = profile.state()["games"]
         live = watching.LIVE
-        from . import __version__
+        from . import __version__, update
+        try:                                     # what the last check found; never asks the network here
+            found = update.check(profile.config, network=False)
+        except Exception:  # noqa: BLE001 - the pulse never fails over updates
+            found = None
         return {"stamp": stamp, "watching": live["at"] is not None, "version": __version__,
+                "update": found if found and found.get("available") else None,
                 "playing": [{"game_id": g, "title": (games.get(g) or {}).get("title") or g}
                             for g in live["playing"]],
                 "syncs": syncs()}
@@ -361,8 +366,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         if not status["installable"] or not self_update.QUIT:
             raise HTTPException(400, {"code": "bad_request",
                                       "message": "There is no update this copy can install by itself."})
-        self_update.install_in_background(status["available"], self_update.QUIT)
-        return {"started": True, "progress": dict(self_update.STATE)}
+        started = self_update.install_in_background(status["available"], self_update.QUIT)
+        return {"started": started, "progress": dict(self_update.STATE)}
 
     @app.get("/v1/local/update")
     def update_status(force: bool = False):

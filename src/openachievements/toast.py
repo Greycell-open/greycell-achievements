@@ -215,7 +215,10 @@ def main() -> None:
         return
     cards = [c for c in data.get("cards") or [] if isinstance(c, dict)][:10]
     if cards:
+        names = ", ".join(str(c.get("name")) for c in cards)
+        print(f"popup: showing {names}")
         show(cards, sound=bool(data.get("sound", True)), choice=data.get("sounds") or {})
+        print(f"popup: shown {names}")
 
 
 if __name__ == "__main__":

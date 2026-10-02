@@ -1,0 +1,4 @@
+Greycell Achievements 1.0.1
+- app.log now records every popup: when it starts, what it shows, or why an unlock gets none.
+- Every line in app.log carries its time.
+- The Sync button only shows when a sync server is connected.

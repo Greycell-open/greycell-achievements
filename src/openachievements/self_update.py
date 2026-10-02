@@ -29,7 +29,7 @@ from . import __version__, update
 
 STATE: dict = {"phase": None, "error": None, "version": None}   # what the page shows while an update runs
 QUIT: Callable[[], None] | None = None   # set by the Windows app: closes it from any thread
-FIRST_LOOK = 60.0                   # seconds after start before the first check
+FIRST_LOOK = 10.0                   # seconds after start before the first check, which always asks
 LOOK_EVERY = 1800.0                 # then every half hour (update.check itself asks the network daily)
 CHUNK = 256 * 1024
 _lock = threading.Lock()
@@ -183,9 +183,10 @@ def mark_asked(config_store, release: dict, today: date | None = None) -> None:
 
 def look_once(config_store, quit_app: Callable[[], None], playing: Callable[[], bool],
               ask: Callable[[str, str], bool] = _ask, tell: Callable[[str, str], None] = _tell,
-              start: Callable = install) -> str:
-    """One look: what happened, for tests and the log."""
-    status = update.check(config_store)
+              start: Callable = install, force: bool = False) -> str:
+    """One look: what happened, for tests and the log. `force` asks
+    greycell.app now (the app does that every time it starts)."""
+    status = update.check(config_store, force=force)
     release = status.get("available")
     if not (status.get("installable") and release):
         return "none"
@@ -202,6 +203,37 @@ def look_once(config_store, quit_app: Callable[[], None], playing: Callable[[], 
     return "installing"
 
 
+def game_may_be_running(live: dict) -> bool:
+    """True while a game runs, and also before the watcher has finished its
+    first look: right after start nobody knows yet, and a popup over a game
+    is worse than one a minute later."""
+    return live.get("at") is None or bool(live.get("playing"))
+
+
+def check_now(config_store, quit_app: Callable[[], None], notice: Callable[[str, str], None],
+              ask: Callable[[str, str], bool] = _ask, start: Callable = install) -> str:
+    """Check for updates from the tray menu: ask greycell.app now, then the
+    same Yes/No as the daily popup, or a tray message saying why not."""
+    status = update.check(config_store, force=True)
+    release = status.get("available")
+    if status.get("reached") is False:
+        notice("Could not check for updates", "greycell.app could not be reached. Try again later.")
+        return "unreachable"
+    if not (status.get("installable") and release):
+        notice("Greycell Achievements is up to date", f"You have the latest version, {__version__}.")
+        return "none"
+    if STATE["phase"] in ("downloading", "installing"):
+        notice("Update already on its way", f"Version {release['version']} is downloading; the app restarts by itself.")
+        return "already"
+    mark_asked(config_store, release)
+    if not ask("Greycell Achievements update", prompt_text(release)):
+        return "declined"
+    if not start(release, quit_app):
+        notice("The update could not start", STATE.get("error") or "Try again later.")
+        return "failed"
+    return "installing"
+
+
 def start_prompting(config_store, quit_app: Callable[[], None], stop: threading.Event) -> None:
     """The daily look, on its own thread, in the Windows app only."""
     if sys.platform != "win32" or not update.frozen() or os.environ.get("GREYCELL_ACHIEVEMENTS_NO_UPDATE_PROMPT"):
@@ -209,14 +241,16 @@ def start_prompting(config_store, quit_app: Callable[[], None], stop: threading.
 
     def playing() -> bool:
         from . import watching
-        return bool(watching.LIVE.get("playing"))
+        return game_may_be_running(watching.LIVE)
 
     def loop() -> None:
         if stop.wait(FIRST_LOOK):
             return
+        first = True
         while not stop.is_set():
             try:
-                print(f"update look: {look_once(config_store, quit_app, playing)}")
+                print(f"update look: {look_once(config_store, quit_app, playing, force=first)}")
+                first = False
             except Exception as exc:  # noqa: BLE001 - an update look never takes the app down
                 print(f"update look failed: {exc}")
             if stop.wait(LOOK_EVERY):

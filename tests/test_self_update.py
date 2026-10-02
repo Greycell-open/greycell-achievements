@@ -187,3 +187,59 @@ def test_a_real_settings_writer_and_the_update_check_never_lose_each_other(tmp_p
     t.join(5)
     saved = cfg.load()
     assert saved["notify"]["unlock_sound"] == "bwoop" and saved["update"]["latest"]["version"] == "9.1.0"
+
+
+def test_check_now_from_the_tray_says_what_it_found(tmp_path, monkeypatch):
+    cfg = MachineConfig(tmp_path / "m")
+    notes, asked, started = [], [], []
+    run = lambda: self_update.check_now(cfg, lambda: None, lambda t, x: notes.append(t),
+                                        ask=lambda t, x: asked.append(x) or True,
+                                        start=lambda r, q: started.append(r["version"]) or True)
+
+    def offline(url):
+        raise OSError("no network")
+    monkeypatch.setattr(update, "_get_json", offline)
+    assert run() == "unreachable" and notes[-1] == "Could not check for updates"
+    monkeypatch.setattr(update, "_get_json", lambda url: {**GOOD, "version": "0.0.1"})
+    assert run() == "none" and notes[-1] == "Greycell Achievements is up to date"
+    monkeypatch.setattr(update, "_get_json", lambda url: GOOD)
+    assert run() == "installing" and started == ["9.1.0"] and asked     # asks even if asked today
+
+
+def test_the_first_look_after_start_asks_greycell_now(tmp_path, monkeypatch):
+    from datetime import datetime, timezone
+    cfg = MachineConfig(tmp_path / "m")
+    cfg.save({"update": {"last_check": datetime.now(timezone.utc).isoformat(), "latest": None}})   # checked today
+    calls = []
+    monkeypatch.setattr(update, "_get_json", lambda url: calls.append(url) or GOOD)
+    look = lambda force: self_update.look_once(cfg, lambda: None, lambda: False, ask=lambda t, x: False,
+                                               tell=lambda t, x: None, force=force)
+    assert look(False) == "none" and calls == []            # a later look trusts today's answer
+    assert look(True) == "declined" and calls == [update.MANIFEST]
+
+
+def test_the_pulse_carries_a_found_update_without_asking_the_network(profile, monkeypatch):
+    from fastapi.testclient import TestClient
+    from openachievements.local_app import create_local_app
+    local = TestClient(create_local_app(profile, token="t" * 32), base_url="http://127.0.0.1:8788")
+    monkeypatch.setattr(update, "_get_json", lambda url: pytest.fail("the pulse asked the network"))
+    assert local.get("/v1/local/pulse").json()["update"] is None
+    monkeypatch.setattr(update, "_get_json", lambda url: GOOD)
+    update.check(profile.config, force=True)                # what the startup check does
+    monkeypatch.setattr(update, "_get_json", lambda url: pytest.fail("the pulse asked the network"))
+    assert local.get("/v1/local/pulse").json()["update"]["available"]["version"] == "9.1.0"
+
+
+def test_no_popup_before_the_watcher_has_looked_for_games():
+    assert self_update.game_may_be_running({"playing": [], "at": None})          # just started: unknown
+    assert self_update.game_may_be_running({"playing": ["steam-1"], "at": 5.0})
+    assert not self_update.game_may_be_running({"playing": [], "at": 5.0})
+
+
+def test_check_now_says_when_an_update_is_already_on_its_way(tmp_path, monkeypatch):
+    cfg = MachineConfig(tmp_path / "m")
+    monkeypatch.setattr(update, "_get_json", lambda url: GOOD)
+    self_update.STATE.update(phase="downloading")
+    notes = []
+    assert self_update.check_now(cfg, lambda: None, lambda t, x: notes.append(t)) == "already"
+    assert notes == ["Update already on its way"]

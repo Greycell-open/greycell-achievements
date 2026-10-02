@@ -123,15 +123,41 @@ def _open_browser_soon() -> None:
     threading.Thread(target=go, daemon=True).start()
 
 
-def _log_to_file() -> None:
+class _Stamped:
+    """app.log with the time at the start of every line, and the process id,
+    since the tray app and its popups write to the same file."""
+
+    def __init__(self, stream):
+        self.stream, self._fresh = stream, True
+
+    def write(self, text: str) -> int:
+        out = []
+        for piece in text.splitlines(keepends=True):
+            if self._fresh:
+                out.append(time.strftime("%Y-%m-%d %H:%M:%S ") + f"[{os.getpid()}] ")
+            out.append(piece)
+            self._fresh = piece.endswith("\n")
+        self.stream.write("".join(out))
+        return len(text)
+
+    def flush(self) -> None:
+        self.stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self.stream, name)
+
+
+def _log_to_file(rotate: bool = True) -> None:
     """A windowed program has no console: keep its output in app.log."""
     from .profile import default_config_dir
     folder = default_config_dir()
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / "app.log"
-    if path.exists() and path.stat().st_size > LOG_LIMIT:
+    # Only the tray app rotates: a popup process runs while the tray holds the
+    # file open, and Windows refuses to rename an open file.
+    if rotate and path.exists() and path.stat().st_size > LOG_LIMIT:
         path.replace(folder / "app.log.1")
-    log = open(path, "a", encoding="utf-8", errors="replace", buffering=1)
+    log = _Stamped(open(path, "a", encoding="utf-8", errors="replace", buffering=1))
     sys.stdout = sys.stderr = log
 
 
@@ -174,7 +200,16 @@ def serve_in_tray(background: bool) -> int:
     from .tray import Tray
     notice = ("Greycell Achievements is running",
               "It lives here in the tray and watches your games. Right-click for the menu.") if created else None
-    tray = Tray(on_open=_open_browser, on_quit=quit_app)
+    def check_updates() -> None:                 # the tray's Check for updates, off the tray's thread
+        def run() -> None:
+            try:
+                print(f"update check from the tray: {self_update.check_now(profile.config, tray.close, tray.notice)}")
+            except Exception as exc:  # noqa: BLE001 - say so, keep running
+                print(f"update check from the tray failed: {exc}")
+                tray.notice("Could not check for updates", "Try again later.")
+        threading.Thread(target=run, daemon=True, name="greycell-update-check").start()
+
+    tray = Tray(on_open=_open_browser, on_quit=quit_app, on_check=check_updates)
     self_update.QUIT = tray.close
     self_update.start_prompting(profile.config, tray.close, stop_watching)
     try:
@@ -191,7 +226,17 @@ def main(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     if argv[:1] == ["--toast"]:
         from . import toast
-        toast.main()
+        if getattr(sys, "frozen", False) or sys.stdout is None:
+            try:
+                _log_to_file(rotate=False)       # a popup that fails says why in app.log, not nowhere
+            except Exception:                    # noqa: BLE001 - no log is no reason to skip the popup
+                pass
+        try:
+            toast.main()
+        except Exception:                        # noqa: BLE001 - recorded, then the popup process ends
+            import traceback
+            print("popup: failed\n" + traceback.format_exc())
+            return 1
         return 0
     background = argv[:1] == ["--background"]
     if argv and not background:

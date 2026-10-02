@@ -27,7 +27,7 @@ NIF_MESSAGE, NIF_ICON, NIF_TIP, NIF_INFO = 1, 2, 4, 0x10
 MF_STRING, MF_SEPARATOR, MF_CHECKED = 0, 0x800, 8
 TPM_RIGHTBUTTON, TPM_RETURNCMD, TPM_NONOTIFY = 2, 0x100, 0x80
 CALLBACK = WM_USER + 20
-CMD_OPEN, CMD_AUTOSTART, CMD_QUIT = 1, 2, 3
+CMD_OPEN, CMD_AUTOSTART, CMD_QUIT, CMD_UPDATES = 1, 2, 3, 4
 
 LRESULT = ctypes.c_ssize_t
 WNDPROC = ctypes.WINFUNCTYPE(LRESULT, wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
@@ -124,8 +124,9 @@ def set_autostart(on: bool, reg=None) -> None:
 # ---- the icon ----------------------------------------------------------------------
 
 class Tray:
-    def __init__(self, on_open: Callable[[], None], on_quit: Callable[[], None], tip: str = "Greycell Achievements"):
-        self.on_open, self.on_quit, self.tip = on_open, on_quit, tip
+    def __init__(self, on_open: Callable[[], None], on_quit: Callable[[], None], tip: str = "Greycell Achievements",
+                 on_check: Callable[[], None] | None = None):
+        self.on_open, self.on_quit, self.tip, self.on_check = on_open, on_quit, tip, on_check
         self.user32, self.shell32, self.kernel32 = _bind()
         self._proc = WNDPROC(self._wndproc)            # kept alive for the window's lifetime
         self.hwnd = None
@@ -150,6 +151,8 @@ class Tray:
         self.user32.AppendMenuW(menu, MF_STRING, CMD_OPEN, "Open dashboard")
         self.user32.AppendMenuW(menu, MF_STRING | (MF_CHECKED if autostart_enabled() else 0), CMD_AUTOSTART,
                                 "Start with Windows")
+        if self.on_check:
+            self.user32.AppendMenuW(menu, MF_STRING, CMD_UPDATES, "Check for updates")
         self.user32.AppendMenuW(menu, MF_SEPARATOR, 0, None)
         self.user32.AppendMenuW(menu, MF_STRING, CMD_QUIT, "Quit")
         point = wintypes.POINT()
@@ -162,6 +165,8 @@ class Tray:
             self.on_open()
         elif cmd == CMD_AUTOSTART:
             set_autostart(not autostart_enabled())
+        elif cmd == CMD_UPDATES and self.on_check:
+            self.on_check()
         elif cmd == CMD_QUIT:
             self.user32.DestroyWindow(self.hwnd)
 

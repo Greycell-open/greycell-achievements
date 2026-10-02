@@ -119,3 +119,53 @@ def test_every_sound_is_only_bubbles_no_chimes(monkeypatch):
             assert seen, name
             for dur, bend, ratio in seen:
                 assert dur <= sounds.BUBBLE_MAX_DUR and bend <= -0.1 and ratio == 2.0, (kind, name, dur, bend, ratio)
+
+
+def test_every_local_popup_decision_is_logged(profile, capsys):
+    """A missing popup must be traceable afterwards: the log says it started,
+    or why not. Platform imports stay out of the log (thousands of them)."""
+    from datetime import datetime, timedelta, timezone
+    from openachievements import notify
+    started = []
+    n = notify.Notifier(profile, launch=lambda cards, sound: started.append(cards))
+    now = datetime.now(timezone.utc)
+    stamp = lambda dt: dt.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+    fresh = {"event_type": "achievement.unlocked", "achievement_id": "g:fresh", "game_id": "g",
+             "occurred_at": stamp(now), "source": {"adapter": "save-file"}}
+    late = dict(fresh, achievement_id="g:late", occurred_at=stamp(now - timedelta(minutes=10)))
+    imported = dict(fresh, achievement_id="g:steam", source={"adapter": "steam"})
+    for e in (fresh, late, imported):
+        n.add(e)
+    n.flush()
+    out = capsys.readouterr().out
+    assert "popup: started for" in out and len(started) == 1
+    assert "no popup for g:late: unlocked 600 s ago" in out
+    assert "g:steam" not in out
+
+
+def test_a_popup_that_cannot_start_is_logged_and_raised(profile, capsys):
+    from datetime import datetime, timezone
+    from openachievements import notify
+
+    def broken(cards, sound):
+        raise OSError("blocked")
+    n = notify.Notifier(profile, launch=broken)
+    n.add({"event_type": "achievement.unlocked", "achievement_id": "g:a", "game_id": "g",
+           "occurred_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"),
+           "source": {"adapter": "save-file"}})
+    import pytest
+    with pytest.raises(OSError):
+        n.flush()
+    assert "popup: could not start the popup" in capsys.readouterr().out
+
+
+def test_log_lines_carry_the_time_and_process(tmp_path):
+    import io, os, re
+    from openachievements.desktop import _Stamped
+    buf = io.StringIO()
+    log = _Stamped(buf)
+    log.write("one\ntwo ")
+    log.write("still two\n")
+    lines = buf.getvalue().splitlines()
+    assert len(lines) == 2 and lines[1].endswith("two still two")
+    assert all(re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[" + str(os.getpid()) + r"\] ", l) for l in lines)

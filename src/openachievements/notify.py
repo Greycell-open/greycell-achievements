@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from typing import Callable
 
 RECENT_SECONDS = 120
+PLATFORMS = ("steam", "psn", "xbox", "gog", "retroachievements")   # they show their own popups
 MAX_PER_ROUND = 10
 DEFAULTS = {"enabled": True, "steam": False, "sound": True, "unlock_sound": "pop", "platinum_sound": "burst"}
 SOUND_KEYS = {"unlock_sound": "unlock", "platinum_sound": "platinum"}
@@ -60,14 +61,27 @@ def _age(iso: str, now: datetime) -> float | None:
     return (now - when).total_seconds()
 
 
-def wanted(event: dict, prefs: dict, now: datetime | None = None) -> bool:
-    if not prefs["enabled"] or event.get("event_type") != "achievement.unlocked":
-        return False
+def skipped_because(event: dict, prefs: dict, now: datetime | None = None) -> str | None:
+    """Why this unlock gets no popup, or None when it gets one. Written to
+    app.log for every unlock, so a missing popup can be traced afterwards."""
+    if event.get("event_type") != "achievement.unlocked":
+        return "not an unlock"
+    if not prefs["enabled"]:
+        return "popups are turned off"
     # Steam, PlayStation and Xbox show their own popups: their unlocks sync quietly unless asked.
-    if event.get("source", {}).get("adapter") in ("steam", "psn", "xbox", "gog", "retroachievements") and not prefs["steam"]:
-        return False
+    adapter = event.get("source", {}).get("adapter")
+    if adapter in PLATFORMS and not prefs["steam"]:
+        return f"{adapter} shows its own popup"
     age = _age(event.get("occurred_at", ""), now or datetime.now(timezone.utc))
-    return age is not None and -60 <= age <= RECENT_SECONDS
+    if age is None:
+        return "no unlock time"
+    if not -60 <= age <= RECENT_SECONDS:
+        return f"unlocked {int(age)} s ago, an old unlock being imported"
+    return None
+
+
+def wanted(event: dict, prefs: dict, now: datetime | None = None) -> bool:
+    return skipped_because(event, prefs, now) is None
 
 
 def custom_file(profile, kind: str):
@@ -144,11 +158,29 @@ class Notifier:
             return 0
         prefs = settings(self.profile.config.load())
         now = datetime.now(timezone.utc)
-        cards = [card(self.profile, e) for e in events if wanted(e, prefs, now)][:MAX_PER_ROUND]
+        cards = []
+        for e in events:
+            if e.get("event_type") != "achievement.unlocked":
+                continue
+            reason = skipped_because(e, prefs, now)
+            if reason is None and len(cards) >= MAX_PER_ROUND:
+                reason = f"more than {MAX_PER_ROUND} in one round"
+            if reason is None:
+                cards.append(card(self.profile, e))
+            elif e.get("source", {}).get("adapter") not in PLATFORMS:
+                # Local signals (saves, play sessions) always say why; platform
+                # imports bring thousands of old unlocks and would flood the log.
+                print(f"popup: no popup for {e.get('achievement_id')}: {reason}")
         cards += platinum_cards(self.profile, events, prefs, now)
         if cards:
-            self._launch(cards, {"on": prefs["sound"], "unlock": prefs["unlock_sound"],
-                                 "platinum": prefs["platinum_sound"],
-                                 **{f"{kind}_file": str(custom_file(self.profile, kind)) for kind in ("unlock", "platinum")
-                                    if prefs[f"{kind}_sound"] == "custom" and custom_file(self.profile, kind).exists()}})
+            names = ", ".join(f"{c['name']} ({c['game']})" for c in cards)
+            try:
+                self._launch(cards, {"on": prefs["sound"], "unlock": prefs["unlock_sound"],
+                                     "platinum": prefs["platinum_sound"],
+                                     **{f"{kind}_file": str(custom_file(self.profile, kind)) for kind in ("unlock", "platinum")
+                                        if prefs[f"{kind}_sound"] == "custom" and custom_file(self.profile, kind).exists()}})
+            except Exception as exc:
+                print(f"popup: could not start the popup for {names}: {exc!r}")
+                raise
+            print(f"popup: started for {names}")
         return len(cards)

@@ -237,3 +237,43 @@ def test_the_pulse_changes_when_something_is_recorded_and_lists_what_runs(profil
         assert now["watching"] is True and now["playing"] == [{"game_id": "test-game", "title": "Test Game"}]
     finally:
         watching.LIVE = old
+
+
+def _toast_run(tmp_path, monkeypatch, show):
+    """desktop.main(["--toast"]) as the frozen app runs it, with app.log held
+    open and past its size limit the way the tray app keeps it."""
+    import io
+    import json
+    from openachievements import desktop, toast
+    cfg = tmp_path / "cfg"
+    cfg.mkdir()
+    log = cfg / "app.log"
+    log.write_bytes(b"x" * (desktop.LOG_LIMIT + 10))
+    monkeypatch.setenv("OPENACHIEVEMENTS_CONFIG", str(cfg))
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(toast, "show", show)
+    payload = json.dumps({"cards": [{"name": "Test", "game": "G", "points": 0}], "sound": False}).encode()
+    monkeypatch.setattr(sys, "stdin", io.TextIOWrapper(io.BytesIO(payload)))
+    out, err = sys.stdout, sys.stderr
+    held = open(log, "a", encoding="utf-8")                  # the tray app's open handle
+    try:
+        code = desktop.main(["--toast"])
+    finally:
+        sys.stdout.flush()
+        sys.stdout, sys.stderr = out, err
+        held.close()
+    return code, log.read_text(encoding="utf-8", errors="replace")
+
+
+def test_a_popup_still_shows_when_the_log_is_full_and_held_open(tmp_path, monkeypatch):
+    shown = []
+    code, text = _toast_run(tmp_path, monkeypatch, lambda cards, **kw: shown.append(cards))
+    assert code == 0 and len(shown) == 1
+    assert "popup: showing Test" in text and "popup: shown Test" in text
+
+
+def test_a_popup_that_crashes_leaves_its_traceback_in_the_log(tmp_path, monkeypatch):
+    def boom(cards, **kw):
+        raise RuntimeError("drawing failed")
+    code, text = _toast_run(tmp_path, monkeypatch, boom)
+    assert code == 1 and "popup: failed" in text and "RuntimeError: drawing failed" in text

@@ -65,3 +65,14 @@ def test_install_uses_this_environments_pip_with_the_release_archive():
                           run=lambda cmd: seen.append(cmd) or 0) == 0
     assert seen[0][1:4] == ["-m", "pip", "install"]
     assert seen[0][-1] == "open-achievements[server] @ https://github.com/o/r/archive/refs/tags/v0.2.0.zip"
+
+
+def test_a_repository_without_releases_means_no_update_not_an_error(tmp_path):
+    import urllib.error
+    cfg = MachineConfig(tmp_path / "m")
+    cfg.save({"update": {"repo": "o/r"}})
+
+    def none_yet(url):
+        raise urllib.error.HTTPError(url, 404, "Not Found", {}, None)
+    status = update.check(cfg, get=none_yet, force=True)
+    assert status["available"] is None and status["reached"] is True

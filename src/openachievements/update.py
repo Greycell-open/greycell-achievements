@@ -23,6 +23,7 @@ import os
 import re
 import subprocess
 import sys
+import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -75,7 +76,12 @@ def settings(config: dict) -> dict:
 
 def latest(repo: str, get: Callable[[str], dict] | None = None) -> dict | None:
     """The newest release, or None when the repository has none."""
-    data = (get or _get_json)(API.format(repo=repo))
+    try:
+        data = (get or _get_json)(API.format(repo=repo))
+    except urllib.error.HTTPError as exc:
+        if exc.code == 404:                          # GitHub's answer for a repository with no release yet
+            return None
+        raise
     tag = str(data.get("tag_name") or "")
     if not version_tuple(tag) or data.get("draft") or data.get("prerelease"):
         return None
@@ -102,7 +108,7 @@ def latest_setup(manifest: str, get: Callable[[str], dict] | None = None) -> dic
 
 
 def check(config_store, now: datetime | None = None, get: Callable[[str], dict] | None = None,
-          force: bool = False) -> dict:
+          force: bool = False, network: bool = True) -> dict:
     """{"current", "available": release or None}. Asks at most daily; a failed
     look is simply tried again tomorrow. The Windows app asks greycell.app's
     manifest, anything else GitHub's releases."""
@@ -111,18 +117,20 @@ def check(config_store, now: datetime | None = None, get: Callable[[str], dict] 
     s = settings(config)
     app = frozen()
     result = {"current": __version__, "available": None, "repo": s["repo"],
-              "download": DOWNLOAD_PAGE if app else None, "installable": False}
+              "download": DOWNLOAD_PAGE if app else None, "installable": False, "reached": None}
     source = s["manifest"] if app else s["repo"]
     if not source or not (s["check"] or force):
         return result
     last = s["last_check"]
-    due = force or not last or now - datetime.fromisoformat(last) >= CHECK_EVERY
+    due = network and (force or not last or now - datetime.fromisoformat(last) >= CHECK_EVERY)
     found = s["latest"]
     if due:
         try:
             found = latest_setup(source, get) if app else latest(source, get)
+            result["reached"] = True
         except Exception:  # noqa: BLE001 - offline or rate-limited: no update today, not an error
             found = s["latest"]
+            result["reached"] = False
         def remember(fresh: dict) -> None:                # into the file as it is now, not as it was
             mine = fresh.setdefault("update", {})
             mine["last_check"] = now.isoformat()

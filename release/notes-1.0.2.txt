@@ -1,0 +1,4 @@
+Greycell Achievements 1.0.2
+- A Settings menu at the top: Check for updates, Sounds and About.
+- The app checks for updates every time it starts, and the dashboard shows a new version without a reload.
+- Check for updates in the tray menu too.

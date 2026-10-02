@@ -99,9 +99,15 @@
         items.map(([k, label]) => `<button type="button" role="menuitem" data-act="${k}"><span>${label}</span>` +
           (links[k] ? `<span class="linked">\u2713 ${esc(links[k])}</span>` : `<span class="muted">Link</span>`) + `</button>`).join("") +
         `</div></div>`);
-      bits.push(`<button class="pill" data-act="sounds" type="button">Sounds</button>`);
+      bits.push(`<div class="menu-wrap"><button class="pill" data-act="settings" id="settingsBtn" type="button" aria-haspopup="menu" ` +
+        `aria-expanded="false" aria-controls="settingsMenu">Settings \u25BE</button>` +
+        `<div class="menu" id="settingsMenu" role="menu" hidden>` +
+        `<button type="button" role="menuitem" data-act="checkupdates"><span>Check for updates</span></button>` +
+        `<button type="button" role="menuitem" data-act="sounds"><span>Sounds</span></button>` +
+        `<button type="button" role="menuitem" data-act="about"><span>About</span></button>` +
+        `</div></div>`);
       bits.push(`<span class="pill status">On this computer</span>`);
-      bits.push(`<button class="pill" data-act="sync" type="button">Sync</button>`);
+      if (syncConnected) bits.push(`<button class="pill" data-act="sync" type="button">Sync</button>`);   // only with a sync server
     } else if (token) {
       bits.push(`<button class="pill" data-act="library" type="button">Library</button>`);
       bits.push(`<button class="pill" data-act="account" type="button">Account</button>`);
@@ -398,16 +404,19 @@
     }).join("") + (list.some((s) => s.running) ? `<span class="sync-note">Runs in the background. Browse freely.</span>` : "");
   }
 
-  let appVersion = null, updating = false;
+  let appVersion = null, updating = false, updateFailed = false, syncConnected = false;
   async function pulse() {
     try {
       const p = await api("v1/local/pulse");
       if (appVersion && p.version && p.version !== appVersion) { location.reload(); return; }   // updated: new page
       appVersion = appVersion || p.version;
+      // Found by the startup check: show the bar once. Never redraw it over an
+      // install attempt or its error, which must stay readable.
+      if (p.update && p.update.available && !updating && !updateFailed && $("updateNote").hidden) showUpdate(p.update);
       if (updating) {
         const u = await api("v1/local/update").catch(() => ({}));
         if (u.progress && u.progress.phase === "error") {
-          updating = false;
+          updating = false; updateFailed = true;
           $("updateNote").textContent = `The update did not install: ${u.progress.error}`;
         }
       }
@@ -491,17 +500,30 @@
     note.hidden = false;
   }
 
-  // ---- About ---------------------------------------------------------------------
-  function describeUpdate(u) {
-    if (u.available && u.installable) return `Version ${u.available.version} is available. Use Install update at the top of the page.`;
-    if (u.available) return `Version ${u.available.version} is available.`;
-    return `You have the latest version.`;
+  // ---- Settings menu: Check for updates, About ----------------------------------------
+  function closeMenus() {
+    for (const m of document.querySelectorAll(".menu")) m.hidden = true;
+    for (const b of document.querySelectorAll('[aria-haspopup="menu"]')) b.setAttribute("aria-expanded", "false");
+  }
+  async function checkForUpdates() {
+    toast("Checking for updates\u2026");
+    const u = await api("v1/local/update?force=true").catch(() => null);
+    const busy = u && u.progress && ["downloading", "installing"].includes(u.progress.phase);
+    if (updating || busy) return toast("The update is already on its way; the app restarts by itself.");
+    if (!u || u.reached === false) return toast("Could not check for updates. Try again later.");
+    if (u.available) {
+      updateFailed = false;                      // asked again: offer it again
+      if (!$("installUpdate")) $("updateNote").hidden = true;
+      showUpdate(u);
+      return toast(u.installable ? `Version ${u.available.version} is available: Install update is at the top.`
+        : `Version ${u.available.version} is available: see the note at the top.`);
+    }
+    toast(`You have the latest version (${u.current}).`);
   }
   async function openAbout() {
     $("aboutDialog").showModal();
     const u = await api("v1/local/update").catch(() => ({}));
     $("aboutVersion").textContent = u.current ? `Version ${u.current}` : "Version unknown";
-    $("aboutUpdate").textContent = u.current ? describeUpdate(u) : "";
   }
 
   // ---- RetroAchievements -----------------------------------------------------------
@@ -786,13 +808,16 @@
       if (t.id === "closeSteam") return $("steamDialog").close();
       if (t.dataset.act === "sounds") { $("soundDialog").showModal(); return renderSounds(); }
       if (t.id === "closeSound") return $("soundDialog").close();
-      if (t.dataset.act === "links") {
-        const open = $("linksMenu").hidden;
-        $("linksMenu").hidden = !open; t.setAttribute("aria-expanded", String(open));
-        if (open) { const first = $("linksMenu").querySelector("button"); if (first) first.focus(); }
+      if (t.dataset.act === "links" || t.dataset.act === "settings") {
+        const menu = $(t.dataset.act + "Menu"), open = menu.hidden;
+        closeMenus();
+        menu.hidden = !open; t.setAttribute("aria-expanded", String(open));
+        if (open) { const first = menu.querySelector("button"); if (first) first.focus(); }
         return;
       }
-      if (t.closest && t.closest("#linksMenu")) { $("linksMenu").hidden = true; $("linksBtn").setAttribute("aria-expanded", "false"); }
+      if (t.closest && t.closest(".menu")) closeMenus();
+      if (t.dataset.act === "checkupdates") return checkForUpdates();
+      if (t.dataset.act === "about") return openAbout();
       if (t.dataset.act === "ra") { $("raDialog").showModal(); return renderRa(); }
       if (t.dataset.act === "gog") { $("gogDialog").showModal(); return renderGog(); }
       if (t.dataset.act === "psn") { $("psnDialog").showModal(); return renderPsn(); }
@@ -808,16 +833,7 @@
         if (!confirm("Disconnect Xbox? Games and achievements already here stay; the saved session is deleted.")) return;
         await api("v1/local/xbox/disconnect", { method: "POST" }); return renderXbox();
       }
-      if (t.id === "openAbout") return openAbout();
       if (t.id === "closeAbout") return $("aboutDialog").close();
-      if (t.id === "checkUpdate") {
-        t.disabled = true; $("aboutUpdate").textContent = "Checking\u2026";
-        const u = await api("v1/local/update?force=true").catch(() => null);
-        t.disabled = false;
-        $("aboutUpdate").textContent = u ? describeUpdate(u) : "Could not reach greycell.app. Try again later.";
-        if (u && u.available) showUpdate(u);
-        return;
-      }
       if (t.id === "installUpdate") {
         t.disabled = true; t.textContent = "Downloading\u2026";
         try {
@@ -939,13 +955,11 @@
     clearTimeout(searchTimer);
     searchTimer = setTimeout(() => searchCatalogue().catch((err) => toast(err.message)), 250);
   });
-  document.addEventListener("click", (e) => {
-    const menu = $("linksMenu");
-    if (menu && !menu.hidden && !e.target.closest(".menu-wrap")) { menu.hidden = true; $("linksBtn").setAttribute("aria-expanded", "false"); }
-  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".menu-wrap")) closeMenus(); });
   document.addEventListener("keydown", (e) => {
-    const menu = $("linksMenu");
-    if (e.key === "Escape" && menu && !menu.hidden) { menu.hidden = true; $("linksBtn").setAttribute("aria-expanded", "false"); $("linksBtn").focus(); }
+    if (e.key !== "Escape") return;
+    const open = [...document.querySelectorAll(".menu")].find((m) => !m.hidden);
+    if (open) { closeMenus(); const btn = $(open.id.replace("Menu", "Btn")); if (btn) btn.focus(); }
   });
   for (const id of ["steamDialog", "psnDialog", "xboxDialog", "gogDialog", "raDialog"]) $(id).addEventListener("close", () => refreshLinks());
   $("addDialog").addEventListener("click", (e) => { if (e.target === $("addDialog")) $("addDialog").close(); });
@@ -968,6 +982,7 @@
     if (u) return publicView(u);
     const info = await fetch("v1/mode").then((r) => r.json()).catch(() => ({ mode: "server" }));
     mode = info.mode;
+    syncConnected = Boolean(info.sync);
     if (mode === "local") {
       $("apiLink").hidden = true;
       const st = await fetch("v1/local/steam").then((r) => r.json()).catch(() => ({}));
@@ -987,7 +1002,6 @@
     }
     if (mode === "server" && !info.registration) $("registerTab").hidden = true;
     if (mode === "local") fetch("v1/local/update").then((r) => r.json()).then(showUpdate).catch(() => {});
-    if (mode !== "local") $("openAbout").hidden = true;
     renderTop();
 
     if (mode === "local" || token) {
