@@ -357,5 +357,6 @@ scripts/lock.sh        # after editing requirements/*.in or the base digest
 ## Licence
 
 Code: AGPL-3.0-or-later (see `LICENSE`). Specifications and example packs:
-CC0-1.0. Platform names and artwork belong to their owners; Greycell Achievements
-links to platform artwork and never copies it.
+CC0-1.0. Platform names and artwork belong to their owners. The app fetches a game's
+banner and its achievement icons from the platform's own image host once and
+keeps a private copy on your PC for display; it never shares or republishes them.

@@ -6,9 +6,10 @@
 // A `?u=name` URL shows someone's public profile, read-only.
 //
 // Every piece of text from a pack, a platform or a user goes through esc()
-// before it reaches innerHTML. Platform artwork (RetroAchievements, Steam) is
-// only loaded when the viewer turns it on, because it means the browser asks
-// those sites for images.
+// before it reaches innerHTML. Platform artwork (Steam, RetroAchievements and
+// the rest) is shown only in local mode, through this app's own picture cache
+// (v1/local/art), so the browser itself never asks those sites; a sync server's
+// pages show letter tiles.
 (function () {
   "use strict";
   const $ = (id) => document.getElementById(id);
@@ -53,13 +54,25 @@
     setTimeout(() => t.remove(), 2600);
   }
 
-  const showArt = () => store.get("oa_artwork") === "1";
+  // Pictures come through this app (v1/local/art), which keeps a copy on this
+  // computer; a picture that is not there turns back into the letter tile.
+  const glyph = (label) => `<span class="glyph" aria-hidden="true">${esc((label || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
   function picture(url, label, alt) {
-    if (url && /^https:\/\//.test(url) && showArt()) {
-      return `<img src="${esc(url)}" alt="${esc(alt || "")}" loading="lazy" referrerpolicy="no-referrer">`;
+    if (url && /^https:\/\//.test(url) && mode === "local") {
+      return `<img src="v1/local/art?u=${encodeURIComponent(url)}" alt="${esc(alt || "")}" loading="lazy" ` +
+        `data-glyph="${esc(label || "?")}">`;
     }
-    return `<span class="glyph" aria-hidden="true">${esc((label || "?").trim().charAt(0).toUpperCase() || "?")}</span>`;
+    return glyph(label);
   }
+  function banner(g) {
+    if (mode !== "local") return glyph(g.title || g.game_id);
+    return `<img class="banner" src="v1/local/art/game/${encodeURIComponent(g.game_id)}" alt="" loading="lazy" ` +
+      `data-glyph="${esc(g.title || g.game_id)}">`;
+  }
+  document.addEventListener("error", (e) => {         // no picture: the letter tile instead
+    const img = e.target;
+    if (img && img.tagName === "IMG" && img.dataset.glyph !== undefined) img.outerHTML = glyph(img.dataset.glyph);
+  }, true);
   const PROVENANCE_TEXT = {
     "imported": "imported", "local-executable": "played here", "save-derived": "from save",
     "game-log": "from game log", "manual": "ticked by hand", "unverified": "unverified",
@@ -166,7 +179,7 @@
     const badge = (g.status ? `<span class="badge ${esc(g.status)}">${esc(STATUS_NAME[g.status] || g.status)}</span>` : "") +
       (plat ? `<span class="badge platinum">Platinum</span>` : "");
     return `<button type="button" class="game${plat ? " complete" : ""}" data-game="${esc(g.game_id)}">` +
-      picture(g.icon_url, g.title || g.game_id, "") +
+      banner(g) +
       `<span class="game-body"><span class="game-title">${esc(g.title || g.game_id)}</span>` +
       `<span class="game-sub">${esc(sub || "No platform")}${badge}</span>` +
       (g.total ? `<span class="game-sub">${g.unlocked}/${g.total} achievements` : `<span class="game-sub">No achievements known yet`) +
@@ -319,7 +332,8 @@
         if (!r.found.length || $("gameDialog").dataset.game !== id) return;
         $("savesFound").innerHTML = `Saves look like they are in <code>${esc(r.found[0])}</code>` +
           (r.found.length > 1 ? ` (and ${r.found.length - 1} more)` : "") +
-          `. Unlocks from saves need rules for this game, which are not written yet.`;
+          (r.rules ? `. Achievements are read from these saves as you play.`
+            : `. Unlocks from saves need rules for this game, which are not written yet.`);
         $("savesFound").hidden = false;
       }).catch(() => {});
     }
@@ -937,7 +951,6 @@
       try { await api("v1/privacy", { method: "PUT", body: JSON.stringify({ public: e.target.checked }) }); toast(e.target.checked ? "Profile is public" : "Profile is private"); }
       catch (err) { toast(err.message); e.target.checked = !e.target.checked; }
     }
-    if (e.target.id === "artwork") { store.set("oa_artwork", e.target.checked ? "1" : null); renderGames(); }
     if (e.target.id === "filter") renderGames();
     if (e.target.id === "platform") { store.set("oa_platform", e.target.value || null); renderGames(); }
     if (e.target.id === "sort") { store.set("oa_sort", e.target.value); renderGames(); }
@@ -970,7 +983,6 @@
     const card = e.target.closest && e.target.closest("[data-reveal]");
     if (card && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); card.click(); }
   });
-  $("artwork").checked = showArt();
   if (["recent", "name", "progress"].includes(store.get("oa_sort"))) $("sort").value = store.get("oa_sort");
 
   // ---- start -------------------------------------------------------------------

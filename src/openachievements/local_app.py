@@ -353,8 +353,10 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
 
     @app.get("/v1/local/games/{game_id}/saves")
     def game_saves(game_id: str):
-        from .adapters import autodetect
-        return {"found": autodetect.save_candidates(profile, game_id)}
+        from .adapters import autodetect, saverules
+        pack = profile.state()["packs"].get(game_id) or {}
+        has_rules = bool(pack.get("saves")) or game_id in saverules.bundled()
+        return {"found": autodetect.save_candidates(profile, game_id), "rules": has_rules}
 
     @app.post("/v1/local/update/install")
     def update_install(x_oa_token: str | None = Header(default=None)):
@@ -368,6 +370,43 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
                                       "message": "There is no update this copy can install by itself."})
         started = self_update.install_in_background(status["available"], self_update.QUIT)
         return {"started": started, "progress": dict(self_update.STATE)}
+
+    def _picture(path):
+        if path is None:
+            raise HTTPException(404)
+        head = path.read_bytes()[:12]
+        kind = ("image/png" if head.startswith(b"\x89PNG") else "image/gif" if head.startswith(b"GIF8")
+                else "image/webp" if head[8:12] == b"WEBP" else "image/jpeg")
+        return FileResponse(path, media_type=kind, headers={"Cache-Control": "private, max-age=86400"})
+
+    @app.get("/v1/local/art")
+    def art(u: str = ""):
+        """An achievement or game picture from a platform's image host, kept on
+        this computer after the first time (art.py). Other addresses: 404."""
+        from . import art as pictures
+        return _picture(pictures.cached(u))
+
+    @app.get("/v1/local/art/game/{game_id}")
+    def game_art(game_id: str):
+        from . import art as pictures, steamfiles
+        from .adapters import steam_local
+        games = profile.state()["games"]
+        game = games.get(game_id)
+        if not game:
+            raise HTTPException(404)
+        link = steam_local.linked(profile) or {}
+        root = Path(link["root"]) if link.get("root") else steamfiles.steam_dir()
+        # The card shows games linked into this one too (the library folds them
+        # in): their Steam banner counts, as does a Steam id this game records.
+        from .reducer import _link_target
+        linked = [gid for gid, g in games.items()                    # whole chains, as the library folds them
+                  if gid != game_id and g.get("linked_to") and _link_target(games, gid) == game_id]
+        steam = (game.get("external_ids") or {}).get("steam")
+        if steam and not game_id.startswith("steam-"):
+            linked.append(f"steam-{steam}")
+        entry = {"game_id": game_id, "icon_url": game.get("icon_url"),
+                 "linked_games": [{"game_id": gid} for gid in linked]}
+        return _picture(pictures.game_picture(entry, root))
 
     @app.get("/v1/local/update")
     def update_status(force: bool = False):

@@ -1,0 +1,4 @@
+Greycell Achievements 1.0.3
+- Game banners and achievement icons, from the start: no setting to turn on.
+- Pictures are fetched once from the platform and kept on your PC, so they also show offline.
+- A game with save rules (Townfall) no longer says its rules are not written yet.

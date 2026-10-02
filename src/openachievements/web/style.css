@@ -117,6 +117,7 @@ label.inline select { width: auto; padding: 4px 8px; }
 .game { min-width: 0; text-align: left; border: 1px solid var(--line); background: var(--panel); border-radius: var(--radius); padding: 14px; cursor: pointer; display: flex; gap: 12px; align-items: center; }
 .game:hover, .game:focus-visible { border-color: var(--cyan); box-shadow: var(--glow); outline: none; }
 .game img, .glyph { width: 48px; height: 48px; border-radius: 10px; flex: none; object-fit: cover; background: var(--panel-2); }
+.game img.banner { width: 102px; height: 48px; border-radius: 8px; }   /* Steam banners are 460 x 215 */
 .glyph { display: grid; place-items: center; font-weight: 800; color: var(--violet); }
 .game-body { min-width: 0; flex: 1; display: flex; flex-direction: column; }
 .game-title, .game-sub, .bar { display: block; }
