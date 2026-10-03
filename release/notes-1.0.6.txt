@@ -1,0 +1,2 @@
+Greycell Achievements 1.0.6
+- A Roadmap button in the top bar shows what is coming next: Linux, Steam Deck, Windows on ARM, macOS and more stores.

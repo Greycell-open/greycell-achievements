@@ -34,6 +34,7 @@ button, input, select { font: inherit; color: inherit; }
 .brand img { filter: drop-shadow(0 0 8px rgba(34, 211, 238, .5)); }
 .top-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .pill { border: 1px solid var(--line); background: var(--panel); border-radius: 999px; padding: 6px 12px; cursor: pointer; font-size: 13px; }
+a.pill { color: inherit; text-decoration: none; display: inline-block; }
 .pill:hover { border-color: var(--violet); }
 .pill.status { cursor: default; color: var(--muted); }
 

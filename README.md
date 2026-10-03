@@ -217,6 +217,13 @@ It shows over windowed and borderless games. A game in exclusive fullscreen
 owns the screen and hides it: Steam's and Xbox's popups draw inside the game,
 which Greycell Achievements does not do.
 
+## Roadmap
+
+What is coming next (Linux, Steam Deck, Windows on ARM, Linux on ARM, macOS on
+Intel and Apple Silicon, more stores, and more) is on
+[greycell.app](https://greycell.app/apps/greycell-achievements-roadmap.html),
+and behind the **Roadmap** button in the app.
+
 ## Your games, from everywhere
 
 ```bash

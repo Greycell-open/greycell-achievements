@@ -100,6 +100,8 @@
     renderTop();
   }
 
+  const ROADMAP = "https://greycell.app/apps/greycell-achievements-roadmap.html";   // what is coming, on greycell.app
+
   function renderTop() {
     const bits = [];
     if (mode === "local") {
@@ -119,6 +121,7 @@
         `<button type="button" role="menuitem" data-act="sounds"><span>Sounds</span></button>` +
         `<button type="button" role="menuitem" data-act="about"><span>About</span></button>` +
         `</div></div>`);
+      bits.push(`<a class="pill" href="${ROADMAP}" target="_blank" rel="noreferrer noopener">Roadmap</a>`);
       bits.push(`<span class="pill status">On this computer</span>`);
       if (syncConnected) bits.push(`<button class="pill" data-act="sync" type="button">Sync</button>`);   // only with a sync server
     } else if (token) {
