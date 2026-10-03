@@ -1,0 +1,5 @@
+Greycell Achievements 1.0.5
+- A PlayStation trophy that completes a game no longer brings a Platinum popup on the PC.
+- Rarity is matched by each achievement's own id, so two achievements with the same name keep their own rarity.
+- A garbled answer from Steam is retried instead of being remembered as no rarity.
+- Steam percentages are never written into your history.

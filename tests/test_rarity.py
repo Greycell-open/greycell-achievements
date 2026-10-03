@@ -205,3 +205,62 @@ def test_all_pictures_of_a_popup_share_one_short_wait():
     fast = [{"name": "a"}, {"name": "b"}]
     notify.add_pictures(fast, ["https://x/a.jpg", None], cached=lambda url: "C:/a.img")
     assert fast == [{"name": "a", "icon": "C:/a.img"}, {"name": "b"}]
+
+
+# ---- 1.0.5: the last review's findings --------------------------------------------------
+
+def test_a_playstation_trophy_never_brings_a_pc_platinum_card(profile):
+    from openachievements import events as ev
+    from openachievements.packs import validate_definitions, split_for_events
+    gid = "psn-npwr1"
+    profile.register_game(gid, "Astro", platform="PS5")
+    pack = validate_definitions({"id": gid, "name": "Astro", "game_ids": [gid], "version": "1"},
+                                [{"id": "a", "name": "A", "description": ""}])
+    profile.commit([ev.make_event("pack.installed", profile_id=profile.profile_id, device_id=profile.device_id,
+                                  payload=p, adapter="psn") for p in split_for_events(pack)])
+    unlock = ev.make_event("achievement.unlocked", profile_id=profile.profile_id, device_id=profile.device_id,
+                           payload={"provenance": "imported"}, game_id=gid, achievement_id=f"{gid}:a", adapter="psn",
+                           occurred_at=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
+    profile.commit([unlock])
+    now = datetime.now(timezone.utc)
+    for steam in (False, True):
+        assert notify.platinum_cards(profile, [unlock], {**notify.DEFAULTS, "steam": steam}, now) == []
+
+
+def test_a_game_added_from_an_old_catalogue_file_keeps_no_percentage(profile, tmp_path):
+    from openachievements.catalog import steam as cat
+    entry = {"pack": {"id": "steam-10", "name": "G (Steam)", "version": "1", "game_ids": ["steam-10"],
+                      "games": [{"id": "steam-10", "title": "G", "platform": "PC (Steam)", "external_ids": {"steam": 10}}],
+                      "source": "steam-catalog"},
+             "achievements": [{"id": "a", "name": "A", "description": "", "points": 0, "rarity": "0.7% of players"}]}
+
+    class Index:
+        def get(self, appid):
+            return entry if appid == 10 else None
+    cat.add_to_profile(profile, Index(), 10)
+    text = "".join(p.read_text(encoding="utf-8") for p in profile.folder.rglob("*.jsonl"))
+    assert "steam-10" in text and "% of players" not in text
+
+
+def test_achievements_sharing_a_name_keep_their_own_rarity(tmp_path):
+    same = {"response": {"achievements": [
+        {"internal_name": "RARE_ONE", "localized_name": "Same Name", "player_percent_unlocked": "0.5"},
+        {"internal_name": "EASY_ONE", "localized_name": "Same Name", "player_percent_unlocked": "50"}]}}
+    rarity.fetch("77", Steam(answer=(200, json.dumps(same))), tmp_path)
+    assert rarity.percent("steam-77", "Same Name", tmp_path, "RARE_ONE") == 0.5
+    assert rarity.percent("steam-77", "Same Name", tmp_path, "EASY_ONE") == 50.0
+    assert rarity.percent("steam-77", "Same Name", tmp_path) is None              # by name alone it could be either
+
+
+def test_a_garbled_answer_is_retried_but_a_real_empty_one_is_kept(tmp_path):
+    for garbled in ("<html>busy</html>", json.dumps({"response": {"achievements": "?"}}), json.dumps({"x": 1})):
+        assert rarity.fetch("8", Steam(answer=(200, garbled)), tmp_path) is None
+        assert not rarity.fresh("8", tmp_path)
+    assert rarity.fetch("8", Steam(answer=(200, json.dumps({"response": {}}))), tmp_path) is None
+    assert rarity.fresh("8", tmp_path)                                               # Steam really said: none
+
+
+def test_the_readme_does_not_call_the_sounds_chimes():
+    from pathlib import Path
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text(encoding="utf-8").lower()
+    assert "chime" not in readme

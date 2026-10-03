@@ -111,6 +111,8 @@ def platinum_cards(profile, events: list[dict], prefs: dict, now: datetime) -> l
     fresh = set()
     for e in events:
         age = _age(e.get("occurred_at", ""), now)
+        if e.get("source", {}).get("adapter") == "psn":
+            continue                                      # earned on the console: no PC popup, Platinum included
         if e.get("event_type") == "achievement.unlocked" and age is not None and -60 <= age <= RECENT_SECONDS:
             fresh.add(e.get("game_id"))
     fresh.discard(None)
@@ -165,7 +167,9 @@ def card(profile, event: dict, prefs: dict | None = None, rarity_of=None) -> dic
     if prefs is not None:
         from . import rarity
         try:
-            pct = (rarity_of or rarity.for_unlock)(event.get("game_id") or "", name)
+            stable = definition.get("external_id")           # Steam's api name, RetroAchievements' id
+            pct = (rarity_of(event.get("game_id") or "", name) if rarity_of
+                   else rarity.for_unlock(event.get("game_id") or "", name, stable_id=stable))
         except Exception:  # noqa: BLE001 - no rarity is never a reason to lose the popup
             pct = None
         if pct is not None and pct < float(prefs.get("rare_below", DEFAULTS["rare_below"])):

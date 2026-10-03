@@ -218,6 +218,8 @@ def build_pack(appid: int, title: str, rows: list[dict], *, crawled_at: str, pre
                 "hidden": bool(hidden)}
         if icon.startswith("https://"):
             item["icon"] = icon[:300]
+        if row.get("api_name"):
+            item["external_id"] = str(row["api_name"])[:128]    # Steam's stable id: rarity looks it up by this
         achievements.append(item)
     game_id = f"steam-{appid}"
     meta = {
@@ -555,7 +557,8 @@ def add_to_profile(profile, index: CatalogIndex, appid: int, status: str | None 
         # A pack built from the player's own Steam files is better data than the
         # public page (real hidden flags and descriptions): never replace it.
         with tempfile.TemporaryDirectory() as tmp:
-            profile.install_pack(write_pack_folder(entry, Path(tmp) / game_id))
+            clean = {**entry, "achievements": without_rarity(entry["achievements"])}
+            profile.install_pack(write_pack_folder(clean, Path(tmp) / game_id))
     if status:
         profile.set_status(game_id, status)
     return {"game_id": game_id, "title": entry["pack"]["games"][0]["title"],

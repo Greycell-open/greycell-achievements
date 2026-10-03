@@ -62,10 +62,12 @@ def _load(game_id: str, folder: Path | None) -> dict | None:
         return None
 
 
-def store(game_id: str, by_name: dict[str, float], folder: Path | None = None, now: float | None = None) -> None:
-    """Keep percentages a platform's sync already received (RetroAchievements)."""
-    data = {"fetched": time.time() if now is None else now,
-            "by_name": {_key(k): round(float(v), 2) for k, v in by_name.items()}}
+def store(game_id: str, rows: list[tuple[str, str, float]], folder: Path | None = None,
+          now: float | None = None) -> None:
+    """Keep percentages a platform's sync already received (RetroAchievements):
+    rows of (stable id, name, percent)."""
+    data = _tables(rows)
+    data["fetched"] = time.time() if now is None else now
     write_json_atomic(_file(game_id, folder), data)
 
 
@@ -81,29 +83,43 @@ def fetch(appid: str, http: Callable[[str], tuple[int, str]] | None = None, fold
     so it is simply asked again later. None when there are no percentages."""
     from .catalog import steam as cat
     now = time.time() if now is None else now
-    get = http or _default_fetch
-    answered = []
-
-    def recording(url):
-        status, body = get(url)                  # an exception here: not an answer, nothing cached
-        answered.append(status == 200)           # 403/404 may be passing refusals: asked again later
-        return status, body
     try:
-        rows = cat.fetch_schema(int(appid), recording)
-    except Exception:  # noqa: BLE001 - offline, slow, odd answer: no rarity this time
+        status, body = (http or _default_fetch)(cat.SCHEMA_URL.format(appid=int(appid)))
+    except Exception:  # noqa: BLE001 - offline, slow, refused: no rarity this time, asked again later
         return None
-    if not (answered and answered[0]):
+    if status != 200:                            # 403/404 may be passing refusals: asked again later
         return None
-    by_name = {}
-    for r in rows or []:
+    try:
+        response = json.loads(body)["response"]
+        items = response.get("achievements", [])
+        if not isinstance(items, list):
+            raise ValueError("achievements is not a list")
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return None                              # garbled: not an answer, nothing cached
+    rows = [(str(a.get("internal_name") or ""), str(a.get("localized_name") or ""), a.get("player_percent_unlocked"))
+            for a in items if isinstance(a, dict)]
+    data = _tables(rows)
+    data.update(fetched=now, answered=True)
+    write_json_atomic(_file(f"steam-{appid}", folder), data)
+    return data if data["by_id"] else None
+
+
+def _tables(rows) -> dict:
+    """{"by_id": {stable id: pct}, "by_name": {name: pct}} where a name shared
+    by two achievements is left out (it could be either)."""
+    by_id, by_name, seen = {}, {}, {}
+    for stable, name, value in rows:
         try:
-            pct = float(r.get("percent"))
+            pct = round(float(value), 2)
         except (TypeError, ValueError):
             continue
-        by_name[_key(r.get("name"))] = round(pct, 2)
-    data = {"fetched": now, "by_name": by_name, "answered": bool(rows)}
-    write_json_atomic(_file(f"steam-{appid}", folder), data)
-    return data if by_name else None
+        if stable:
+            by_id[stable] = pct
+        key = _key(name)
+        if key:
+            seen[key] = seen.get(key, 0) + 1
+            by_name[key] = pct
+    return {"by_id": by_id, "by_name": {k: v for k, v in by_name.items() if seen[k] == 1}}
 
 
 def fresh(appid: str, folder: Path | None = None, now: float | None = None) -> bool:
@@ -115,24 +131,28 @@ def fresh(appid: str, folder: Path | None = None, now: float | None = None) -> b
     return age < (REFRESH if data.get("by_name") else MISS_FOR)
 
 
-def percent(game_id: str, name: str, folder: Path | None = None) -> float | None:
-    """The share of players with this achievement, from the cache only."""
+def percent(game_id: str, name: str, folder: Path | None = None, stable_id: str | None = None) -> float | None:
+    """The share of players with this achievement, from the cache only: by the
+    platform's own id when known, else by a name no other achievement shares."""
     data = _load(game_id, folder)
     if not data:
         return None
-    value = (data.get("by_name") or {}).get(_key(name))
+    value = (data.get("by_id") or {}).get(str(stable_id)) if stable_id not in (None, "") else None
+    if value is None:
+        value = (data.get("by_name") or {}).get(_key(name))
     return float(value) if value is not None else None
 
 
-def for_unlock(game_id: str, name: str, http=None, folder: Path | None = None) -> float | None:
+def for_unlock(game_id: str, name: str, http=None, folder: Path | None = None,
+               stable_id: str | None = None) -> float | None:
     """The percentage for an achievement that just unlocked: from the cache,
     or fetched now if this game has none yet (one request)."""
     appid = _appid(game_id)
     if not appid:
-        return percent(game_id, name, folder)            # RetroAchievements: from its sync, if any
+        return percent(game_id, name, folder, stable_id)  # RetroAchievements: from its sync, if any
     if not fresh(appid, folder):
         fetch(appid, http, folder)
-    return percent(game_id, name, folder)
+    return percent(game_id, name, folder, stable_id)
 
 
 def fresh_after(fetcher, appid: str, http, folder) -> bool:

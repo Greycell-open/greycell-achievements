@@ -198,15 +198,18 @@ dev.bat reset             :: throw the dev profile away and start over
 
 ### The unlock popup
 
-When something unlocks while you play, a small rounded card slides up at the
-bottom centre of the screen with a quiet two-note chime, then fades after five
-seconds. It never takes focus and clicks pass through it, so the game keeps
-your input. Steam unlocks are left to Steam's own popup unless you ask.
+When something unlocks while you play, a small rounded card with the
+achievement's picture slides up at the bottom centre of the screen with a soft
+sound (Echo by default: a short climb into a round tone that echoes back), then
+fades after five seconds. A rare achievement gets a silver card and its own
+sound. It never takes focus and clicks pass through it, so the game keeps your
+input. Steam, Xbox, GOG and RetroAchievements unlocks are left to their own
+popups unless you ask; PlayStation trophies never pop up on the PC.
 
 ```bash
 openachievements notify test          # show one now
 openachievements notify off           # or on
-openachievements notify sound off     # the card without the chime
+openachievements notify sound off     # the card without a sound
 openachievements notify steam on      # also for Steam unlocks
 ```
 

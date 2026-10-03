@@ -100,15 +100,15 @@ def _keep_rarity(game_id: str, info: dict) -> None:
         return
     if players <= 0:
         return
-    by_name = {}
+    rows = []
     for a in (_get(info, "Achievements", "achievements") or {}).values():
         awarded = _get(a, "NumAwarded", "numAwarded")
         if _get(a, "Title", "title") and isinstance(awarded, (int, float)):
-            by_name[_get(a, "Title", "title")] = 100.0 * awarded / players
-    if by_name:
+            rows.append((str(_get(a, "ID", "id") or ""), _get(a, "Title", "title"), 100.0 * awarded / players))
+    if rows:
         from .. import rarity
         try:
-            rarity.store(game_id, by_name)
+            rarity.store(game_id, rows)
         except OSError:
             pass                                          # rarity is a nicety; the sync goes on
 
