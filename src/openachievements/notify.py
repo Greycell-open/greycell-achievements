@@ -177,6 +177,16 @@ def card(profile, event: dict, prefs: dict | None = None, rarity_of=None) -> dic
     return out
 
 
+def popups_here() -> bool:
+    """Windows always; Linux when there is a desktop to show them on."""
+    if sys.platform == "win32":
+        return True
+    if sys.platform.startswith("linux"):
+        from .linux_desktop import has_display
+        return has_display()
+    return False
+
+
 def _launch(cards: list[dict], sound) -> None:
     """Start the popup window on its own, without a console window."""
     if getattr(sys, "frozen", False):              # GreycellAchievements.exe has a popup mode
@@ -188,8 +198,12 @@ def _launch(cards: list[dict], sound) -> None:
             python = windowed
         command = [python, "-m", "openachievements.toast"]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "DETACHED_PROCESS", 0)
+    extra = {}
+    if os.name != "nt":                            # its own session; a built app starts afresh, not as this one
+        from .self_update import clean_environment
+        extra = {"start_new_session": True, "env": clean_environment() if getattr(sys, "frozen", False) else None}
     proc = subprocess.Popen(command, stdin=subprocess.PIPE,
-                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags)
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=flags, **extra)
     # sound: True/False, or {"on": bool, "unlock": name, "platinum": name} with the chosen sounds
     choice = sound if isinstance(sound, dict) else {"on": bool(sound)}
     proc.stdin.write(json.dumps({"cards": cards, "sound": bool(choice.get("on")),
@@ -212,7 +226,7 @@ class Notifier:
 
     def flush(self) -> int:
         events, self._pending = self._pending, []
-        if not events or sys.platform != "win32" and self._launch is _launch:
+        if not events or self._launch is _launch and not popups_here():
             return 0
         prefs = settings(self.profile.config.load())
         now = datetime.now(timezone.utc)

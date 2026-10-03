@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "open-achievements"
-version = "1.0.6"
+version = "1.1.0"
 description = "Local-first, self-hostable achievement library for every game, including the ones no platform tracks."
 readme = "README.md"
 license = "AGPL-3.0-or-later"
@@ -27,7 +27,7 @@ openachievements-server = "openachievements.server.main:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-openachievements = ["web/*", "saverules/*.json"]
+openachievements = ["web/*", "saverules/*.json", "fonts/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

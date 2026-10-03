@@ -154,6 +154,31 @@ def _windows_process_paths() -> set[str]:
     return found
 
 
+def wine_to_unix(arg: str) -> str | None:
+    """A Windows game under Proton or Wine runs as wine's own program; its
+    command line names the game as Z:\\home\\...\\Game.exe (Z: is the
+    whole Linux file system) or as a plain Linux path."""
+    if not arg.lower().endswith(".exe"):
+        return None
+    if arg[:3].lower() == "z:\\":
+        return "/" + arg[3:].replace("\\", "/")
+    return arg if arg.startswith("/") else None
+
+
+def _wine_paths(pid: str) -> set[str]:
+    try:
+        with open(f"/proc/{pid}/cmdline", "rb") as f:
+            args = f.read(8192).split(b"\0")
+    except OSError:
+        return set()
+    out = set()
+    for raw in args[:4]:
+        path = wine_to_unix(raw.decode("utf-8", "replace"))
+        if path:
+            out.add(path.lower())
+    return out
+
+
 def running_executables() -> set[str]:
     """Lowercased full paths (or bare names, where the OS will not say more)
     of every running process. Uses only what the OS ships with."""
@@ -167,7 +192,8 @@ def running_executables() -> set[str]:
                     try:
                         found.add(os.readlink(f"/proc/{pid}/exe").lower())
                     except OSError:
-                        continue
+                        pass
+                    found.update(_wine_paths(pid))
         else:
             out = subprocess.run(("ps", "-axo", "comm="), capture_output=True, text=True, timeout=20).stdout
             found.update(line.strip().lower() for line in out.splitlines() if line.strip())

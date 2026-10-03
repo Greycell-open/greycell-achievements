@@ -109,8 +109,9 @@ def _posix_keyring(args: list[str], secret: str | None = None):
     tool = shutil.which("secret-tool")
     if not tool:
         return None
+    from .linux_desktop import system_env               # the system's libraries, not the AppImage's
     try:
-        return run([tool, *args], input=secret, capture_output=True, text=True, timeout=15)
+        return run([tool, *args], input=secret, capture_output=True, text=True, timeout=15, env=system_env())
     except (OSError, subprocess.SubprocessError):
         return None
 

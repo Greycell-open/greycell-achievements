@@ -14,18 +14,20 @@ ports, emulators, your own challenges).
   PCs you can run the small sync server yourself, in one container.
 - **Get it** at [greycell.app/achievements](https://greycell.app/achievements/):
   download `GreycellAchievementsSetup.exe` (Windows 10 and 11, installs for
-  your user only, no administrator), run it, and link your accounts. It updates
-  itself. From a source checkout, double-click `run.bat` instead.
+  your user only, no administrator) or the Linux AppImage (x86-64, any current
+  distribution and the Steam Deck's Desktop Mode), run it, and link your
+  accounts. It updates itself. From a source checkout, double-click `run.bat`
+  instead.
 - **Free, forever.** AGPL-3.0. No ads, no premium tier, no selling your data.
 - **Honest.** Every unlock says where it came from: imported from a platform,
   or detected from a game you played or its save. There is no unlock button:
   an achievement counts only when something the game recorded says so.
 
-Status: **1.0.** Local profiles, achievement packs, progress
+Status: **1.1.** Local profiles, achievement packs, progress
 achievements, standalone executable tracking, save-file achievements,
 RetroAchievements, Steam, PlayStation, Xbox and GOG imports, games linked
-across sources, sync with multiple devices, the Windows tray app and its live
-dashboard, export and restore all work and are tested. Not yet built: save
+across sources, sync with multiple devices, the Windows tray app, the Linux
+app and their live dashboard, export and restore all work and are tested. Not yet built: save
 transfer, pack signing, a pack registry.
 
 ## Quick start (local only)
@@ -76,6 +78,31 @@ unless its size and SHA-256 match the manifest, runs it with only its
 progress window, and the new version starts in the tray. `openachievements
 update check off` stops the daily look.
 
+### The Linux app
+
+`GreycellAchievements-x86_64.AppImage` is the whole app in one file: make it
+executable (`chmod +x`, or Properties, Allow executing) and open it. The first
+run adds it to your app menu and to Start at login, names your profile after
+your user and opens the library, as its own window in Chrome, Chromium, Brave,
+Edge or Vivaldi when one is installed, else in your browser. Opening it again
+while it runs opens the library. There is no tray icon on Linux: **Settings**
+in the dashboard has Start at login and Quit.
+
+It finds Steam where Linux keeps it (the native client, the Steam Deck, the
+Flatpak and the Snap) and every library folder, an SD card included. Windows
+games played through Proton are recognised while they run, and their saves are
+read from their Proton prefix (`steamapps/compatdata/<appid>/pfx`) when the
+game keeps them there. The unlock popup is the same card as on Windows, shown
+through X11 or XWayland; on a Wayland session without XWayland the desktop's
+own notification says it instead. Sounds play through PipeWire, PulseAudio or
+ALSA.
+
+Updates come the same way as on Windows, from greycell.app's manifest: the
+dashboard's **Install update** downloads the new AppImage, checks its size and
+SHA-256, puts it in place of the old file and restarts. On the Steam Deck it
+runs in Desktop Mode; Game Mode is on the roadmap. Built with
+`scripts/build-linux.sh`.
+
 ### PlayStation
 
 **PlayStation** in the dashboard connects a PSN account, read only. Sony has
@@ -114,10 +141,10 @@ you have started comes in with its full set and RetroAchievements points,
 softcore and hardcore kept apart, and new unlocks follow within about two
 minutes (ADR 0009).
 
-Sign-ins and keys are kept in Windows Credential Manager. Run from source on
-Linux, they go to the desktop keyring (`secret-tool`); with no keyring the app
-refuses to keep them, unless you set `OPENACHIEVEMENTS_FILE_SECRETS=1` to accept
-a file only you can read.
+Sign-ins and keys are kept in Windows Credential Manager. On Linux they go to
+the desktop keyring through `secret-tool` (package `libsecret-tools` or
+`libsecret`); with no keyring the app refuses to keep them, unless you set
+`OPENACHIEVEMENTS_FILE_SECRETS=1` to accept a file only you can read.
 
 All five accounts sit under **Link accounts** at the top of the dashboard.
 
@@ -215,12 +242,13 @@ openachievements notify steam on      # also for Steam unlocks
 
 It shows over windowed and borderless games. A game in exclusive fullscreen
 owns the screen and hides it: Steam's and Xbox's popups draw inside the game,
-which Greycell Achievements does not do.
+which Greycell Achievements does not do. On Linux it is the same card, drawn
+through X11 or XWayland; the Steam Deck's Game Mode shows only the game.
 
 ## Roadmap
 
-What is coming next (Linux, Steam Deck, Windows on ARM, Linux on ARM, macOS on
-Intel and Apple Silicon, more stores, and more) is on
+What is coming next (the Steam Deck's Game Mode, Windows on ARM, Linux on ARM,
+macOS on Intel and Apple Silicon, more stores, and more) is on
 [greycell.app](https://greycell.app/apps/greycell-achievements-roadmap.html),
 and behind the **Roadmap** button in the app.
 

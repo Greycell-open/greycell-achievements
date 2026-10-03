@@ -1,0 +1,3 @@
+Greycell Achievements 1.1.0
+- Greycell Achievements now runs on Linux: one AppImage for any current distribution and the Steam Deck's Desktop Mode, with Steam, Proton games and their saves, the same popup and sounds, and updates that install themselves.
+- On Windows nothing changes for you; this version shares the popup's drawing with the Linux app.

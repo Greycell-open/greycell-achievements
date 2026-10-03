@@ -88,17 +88,56 @@ def root_folder(root: str) -> Path | None:
     return Path(value) if value else None
 
 
+# The same roots inside a Proton prefix's steamuser folder (Linux, Steam Deck).
+PROTON_ROOTS = {"LOCALAPPDATA": ("AppData", "Local"), "LOCALLOW": ("AppData", "LocalLow"),
+                "APPDATA": ("AppData", "Roaming"), "DOCUMENTS": ("Documents",), "SAVED_GAMES": ("Saved Games",)}
+SAVE_ROOT_NAMES = tuple(PROTON_ROOTS)
+
+
+def _proton_roots(appid: str | None = None) -> dict[str, Path]:
+    """appid -> steamuser folder, for Windows games played through Proton.
+    Empty on Windows and macOS."""
+    if sys.platform in ("win32", "darwin"):
+        return {}
+    from .. import steamfiles
+    return steamfiles.proton_users(steamfiles.steam_dir(), appid)
+
+
+def proton_root_folder(root: str, user: Path) -> Path | None:
+    parts = PROTON_ROOTS.get(root)
+    return user.joinpath(*parts) if parts else None
+
+
+def search_roots() -> list[Path]:
+    """Every folder games keep saves under on this computer: the usual ones,
+    then the same ones inside each Proton prefix."""
+    roots = [root_folder(r) for r in SAVE_ROOT_NAMES]
+    roots += [proton_root_folder(r, user) for user in _proton_roots().values() for r in SAVE_ROOT_NAMES]
+    found = list(dict.fromkeys(r for r in roots if r))      # Linux maps two roots to one folder
+    return found + [r / "My Games" for r in found if r.name == "Documents"]
+
+
 def save_folder(profile: Profile, pack_id: str, save: dict) -> Path | None:
     override = profile.config.load().get("save_locations", {}).get(f"{profile.profile_id}:{pack_id}:{save['id']}")
     if override:
         return Path(override)
     base = root_folder(save["root"])
-    if base is None:
-        return None
     try:
-        return safe_child(base, save["path"])
+        native = safe_child(base, save["path"]) if base is not None else None
     except ValueError:
         return None
+    appid = str(pack_id).split("-", 1)[1] if str(pack_id).startswith("steam-") else None
+    if appid and appid.isdigit() and not (native and native.is_dir()):
+        user = _proton_roots(appid).get(appid)          # a Windows game played through Proton
+        inside = proton_root_folder(save["root"], user) if user else None
+        if inside is not None:
+            try:
+                folder = safe_child(inside, save["path"])
+            except ValueError:
+                folder = None
+            if folder is not None and folder.is_dir():
+                return folder
+    return native
 
 
 def _key(profile: Profile, pack_id: str, save_id: str) -> str:

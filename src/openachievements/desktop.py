@@ -52,15 +52,30 @@ def _first_profile() -> bool:
     return True
 
 
+def _autostart_module():
+    """Start with Windows (tray.py, the registry) or Start at login on Linux
+    (linux_desktop.py, an XDG autostart entry); None elsewhere."""
+    if sys.platform == "win32":
+        from . import tray
+        return tray
+    if sys.platform.startswith("linux"):
+        from . import linux_desktop
+        return linux_desktop
+    return None
+
+
 def _autostart_by_default(profile) -> None:
-    """Start with Windows is on unless the player turned it off: switched on
-    once, the first time the app runs on this machine, and kept pointing at
-    this exe if it was moved. Only in the built app, never a source checkout."""
-    if sys.platform != "win32" or not getattr(sys, "frozen", False):
+    """Start with Windows (Start at login on Linux) is on unless the player
+    turned it off: switched on once, the first time the app runs on this
+    machine, and kept pointing at this exe if it was moved. Only in the built
+    app, never a source checkout. On Linux the app menu entry is kept the same way."""
+    tray = _autostart_module()
+    if tray is None or not getattr(sys, "frozen", False):
         return
     if os.environ.get("GREYCELL_ACHIEVEMENTS_PORT"):
         return                                           # a test copy next to the real one leaves its Run value alone
-    from . import tray
+    if tray.__name__.endswith("linux_desktop"):
+        tray.install_menu_entry()
     try:
         offered = (profile.config.load().get("autostart") or {}).get("offered")
         if not offered:
@@ -100,6 +115,10 @@ def _open_browser() -> None:
     """Open the library as its own app window (Edge app mode), else in the
     default browser."""
     if os.environ.get("GREYCELL_ACHIEVEMENTS_NO_BROWSER"):
+        return
+    if sys.platform.startswith("linux"):
+        from . import linux_desktop
+        linux_desktop.open_url(URL)
         return
     edge = _edge()
     if edge:
@@ -171,6 +190,15 @@ def _attach_console() -> None:
         sys.stderr = sys.stdout
 
 
+def _controls_in_the_page(quit_app) -> None:
+    """No tray on Linux: the page's Settings menu has Start at login and Quit,
+    and Install update restarts the app by itself."""
+    from . import local_app, self_update
+    self_update.QUIT = quit_app
+    local_app.APP_CONTROLS.update(quit=quit_app, autostart=_autostart_module() if getattr(sys, "frozen", False)
+                                  else None)
+
+
 def serve_in_tray(background: bool) -> int:
     import uvicorn
     from .local_app import create_local_app
@@ -194,6 +222,7 @@ def serve_in_tray(background: bool) -> int:
         server.should_exit = True
 
     if sys.platform != "win32":
+        _controls_in_the_page(quit_app)
         thread.join()
         return 0
     from . import self_update

@@ -11,6 +11,10 @@ never run, then it runs with only its progress window (/SILENT), the app quits
 so its files can be replaced, and the installer starts the new version in the
 tray. Achievements are in the profile folder, which the installer never
 touches.
+
+On Linux the app is an AppImage with no installer: the checked download is
+renamed over the AppImage file and the new one starts once this one has quit.
+There is no dialog there; the dashboard's Install update does it.
 """
 from __future__ import annotations
 
@@ -51,8 +55,10 @@ def download(release: dict, folder: Path | None = None, opener: Callable = _open
         raise UpdateError("The update's address is not a secure one.")
     folder = Path(folder or Path(tempfile.gettempdir()) / "GreycellAchievements-update")
     folder.mkdir(parents=True, exist_ok=True)
-    target = folder / f"GreycellAchievementsSetup-{release['version']}.exe"
-    for old in folder.glob("GreycellAchievementsSetup-*"):  # earlier updates' installers: not kept forever
+    appimage = release["setup"].endswith(".AppImage")
+    target = folder / (f"GreycellAchievements-{release['version']}.AppImage" if appimage
+                       else f"GreycellAchievementsSetup-{release['version']}.exe")
+    for old in folder.glob("GreycellAchievements*"):     # earlier updates' downloads: not kept forever
         if old != target:
             try:
                 old.unlink()
@@ -105,6 +111,44 @@ def launch(setup: Path, popen: Callable = subprocess.Popen) -> None:
           env=clean_environment())
 
 
+def replace_appimage(new: Path, target: Path) -> None:
+    """Put the downloaded AppImage in place of the one the player keeps, in
+    one step: copied beside it, made runnable, then renamed over it. Linux
+    lets a running program's file be replaced; this app keeps running from
+    the old one until it quits."""
+    staged = target.with_name(f".{target.name}.update")
+    try:
+        with open(new, "rb") as src, open(staged, "wb") as out:
+            while block := src.read(CHUNK):
+                out.write(block)
+        os.chmod(staged, 0o755)
+        os.replace(staged, target)
+    except OSError as exc:
+        staged.unlink(missing_ok=True)
+        raise UpdateError(f"The new version could not be put in place ({exc.__class__.__name__}). "
+                          "Download it from greycell.app/achievements.") from None
+
+
+def relaunch_after_quit(target: Path, pid: int | None = None, popen: Callable = subprocess.Popen) -> None:
+    """Start the new AppImage once this app has quit and freed its port."""
+    from .linux_desktop import system_env
+    env = system_env(clean_environment())
+    for key in ("APPIMAGE", "APPDIR", "ARGV0", "OWD"):           # the new AppImage sets its own
+        env.pop(key, None)
+    script = 'while kill -0 "$1" 2>/dev/null; do sleep 0.3; done; exec "$2" --background'
+    popen(["/bin/sh", "-c", script, "sh", str(pid or os.getpid()), str(target)], env=env, start_new_session=True,
+          stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, close_fds=True)
+
+
+def _swap_appimage(setup: Path, popen: Callable) -> None:
+    target = os.environ.get("APPIMAGE")
+    if not target or not os.path.isfile(target):
+        raise UpdateError("Only the AppImage updates itself; download the new version from greycell.app/achievements.")
+    replace_appimage(setup, Path(target))
+    setup.unlink(missing_ok=True)
+    relaunch_after_quit(Path(target), popen=popen)
+
+
 def install(release: dict, quit_app: Callable[[], None], opener: Callable = _open,
             popen: Callable = subprocess.Popen, folder: Path | None = None) -> bool:
     """Download, check, run the installer, quit. One at a time. False when it did not start."""
@@ -114,11 +158,14 @@ def install(release: dict, quit_app: Callable[[], None], opener: Callable = _ope
         STATE.update(phase="downloading", error=None, version=release["version"])
         setup = download(release, folder, opener)
         STATE.update(phase="installing")
-        try:
-            launch(setup, popen)
-        except OSError as exc:                       # quarantined by antivirus, blocked, deleted
-            raise UpdateError(f"The installer could not start ({exc.__class__.__name__}). The app keeps "
-                              "running; try again, or download it from greycell.app/achievements.") from None
+        if setup.suffix == ".AppImage":
+            _swap_appimage(setup, popen)
+        else:
+            try:
+                launch(setup, popen)
+            except OSError as exc:                   # quarantined by antivirus, blocked, deleted
+                raise UpdateError(f"The installer could not start ({exc.__class__.__name__}). The app keeps "
+                                  "running; try again, or download it from greycell.app/achievements.") from None
     except UpdateError as exc:
         STATE.update(phase="error", error=str(exc))
         return False

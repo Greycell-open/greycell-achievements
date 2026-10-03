@@ -35,7 +35,10 @@ $env:OPENACHIEVEMENTS_HOME = "$T\home"; $env:OPENACHIEVEMENTS_CONFIG = "$T\confi
 New-Item -ItemType Directory -Force "$T\config" | Out-Null
 '{"update": {"manifest": "http://127.0.0.1:8798/latest.json"}, "notify": {"enabled": false}}' | Set-Content -Encoding ascii "$T\config\machine.json"
 $srv = $null
+$completed = $false
 try {
+    if (-not (Test-Path "$T\GreycellAchievementsSetup-$From.exe")) { throw "no $T\GreycellAchievementsSetup-$From.exe to start from" }
+    if (-not (Test-Path "$T\srv\latest.json")) { throw "no $T\srv\latest.json to update from" }
     "--- install $From"
     $p = Start-Process "$T\GreycellAchievementsSetup-$From.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/DIR=$T\app" -PassThru
     $p.WaitForExit()
@@ -71,6 +74,10 @@ try {
     Check "Windows entry removed" (-not (Entry))
     Check "its Start with Windows value removed" (-not (Get-ItemProperty $runKey -Name GreycellAchievements -ErrorAction SilentlyContinue))
     Check "achievements kept" (Test-Path "$T\home\profiles")
+    $completed = $true
+}
+catch {
+    Check "the run itself" $false "($_)"
 }
 finally {
     if ($srv) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
@@ -82,6 +89,7 @@ finally {
     if ($realEntry) { & reg.exe import "$T\real-entry.reg" 2>$null | Out-Null }
     if ($realShortcut) { Copy-Item "$T\real-shortcut.lnk" $shortcut -Force }
 }
+Check "every step ran" $completed                           # a run that stopped early is never a pass
 if ($realEntry) { Check "this user's real install still listed in Windows" ((Get-ItemProperty (Entry).PSPath).InstallLocation -eq $realDir) }
 if ($realShortcut) { Check "this user's Start menu shortcut restored" (Test-Path $shortcut) }
 $now = (Get-ItemProperty $runKey -Name GreycellAchievements -ErrorAction SilentlyContinue).GreycellAchievements

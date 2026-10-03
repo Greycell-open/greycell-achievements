@@ -16,6 +16,8 @@ def sandbox(tmp_path, monkeypatch):
     calls = {"cli": [], "browser": []}
     monkeypatch.setattr(desktop.webbrowser, "open", lambda url: calls["browser"].append(url))
     monkeypatch.setattr(desktop, "_edge", lambda: None)          # never a real browser window in tests
+    from openachievements import linux_desktop                  # nor on Linux
+    monkeypatch.setattr(linux_desktop, "open_url", lambda url, window=True: calls["browser"].append(url))
     monkeypatch.setattr(desktop.time, "sleep", lambda s: None)
     return tmp_path, calls
 
@@ -76,6 +78,7 @@ class FakeRegistry:
         del self.values[name]
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="the Windows tray and registry")
 def test_start_with_windows_is_one_value_for_this_user_only(monkeypatch):
     from openachievements import tray
     reg = FakeRegistry()
@@ -116,6 +119,7 @@ def test_a_frozen_app_reads_the_greycell_manifest_and_a_source_copy_github(tmp_p
     cfg = MachineConfig(tmp_path / "m")
     cfg.save({"update": {"repo": "o/r"}})
     monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(update, "platform_key", lambda *a: "windows-x86_64")   # the Windows app's installer
     manifest = {"version": "9.1.0", "setup": "https://greycell.app/downloads/greycell-achievements/S-9.1.0.exe",
                 "sha256": "a" * 64, "size": 1000, "notes": "new"}
     asked = []
@@ -153,11 +157,12 @@ def test_no_child_process_is_started_without_hiding_its_window():
         text = path.read_text(encoding="utf-8")
         for call in re.finditer(r"subprocess\.(?:run|Popen|call|check_output)\(", text):
             window = text[call.start(): call.start() + 400]
-            nix_only = "(\"ps\"," in window                  # the macOS branch
+            nix_only = "(\"ps\"," in window or "start_new_session" in window   # the macOS and Linux branches
             assert nix_only or "creationflags" in window or "CREATE_NO_WINDOW" in text[max(0, call.start() - 300):call.start()], \
                 f"{path.name}: {window[:80]!r} may open a console window"
 
 
+@pytest.mark.skipif(sys.platform != "win32", reason="the Windows tray and registry")
 def test_start_with_windows_is_on_by_default_once_and_follows_the_exe(sandbox, monkeypatch):
     from openachievements import tray
     from openachievements.profile import Profile
@@ -184,7 +189,7 @@ def test_start_with_windows_is_on_by_default_once_and_follows_the_exe(sandbox, m
 
 
 def test_the_popup_card_has_soft_transparent_corners_and_a_solid_middle():
-    from openachievements import overlay
+    from openachievements import card as overlay            # the card both systems' popups draw
     px = overlay.card_pixels()
     at = lambda x, y: px[y * overlay.W + x]
     assert at(0, 0)[3] == 0                                  # the corner outside the rounding is clear
@@ -207,6 +212,7 @@ def test_on_windows_the_popup_never_goes_through_tk(monkeypatch):
 def test_the_dashboard_opens_as_its_own_app_window(monkeypatch):
     monkeypatch.delenv("GREYCELL_ACHIEVEMENTS_NO_BROWSER", raising=False)
     started = []
+    monkeypatch.setattr(sys, "platform", "win32")                 # Edge's app window; Linux has its own test
     monkeypatch.setattr(desktop, "_edge", lambda: r"C:\Edge\msedge.exe")
     import subprocess
     monkeypatch.setattr(subprocess, "Popen", lambda cmd, **kw: started.append((cmd, kw)))

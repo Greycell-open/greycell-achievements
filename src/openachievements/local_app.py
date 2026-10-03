@@ -11,6 +11,7 @@ The Host header is checked too, which stops DNS-rebinding tricks.
 from __future__ import annotations
 
 import secrets
+import threading
 import urllib.parse
 from pathlib import Path
 
@@ -26,6 +27,8 @@ WEB_DIR = Path(__file__).resolve().parent / "web"
 NO_CACHE = {"Cache-Control": "no-cache"}
 
 ALLOWED_HOSTS = ("127.0.0.1", "localhost")
+# Set by the desktop app where it has no tray (Linux): {"quit": callable, "autostart": module}.
+APP_CONTROLS: dict = {}
 
 
 class StatusBody(BaseModel):
@@ -69,6 +72,10 @@ class PsnConnectBody(BaseModel):
 class AddBody(BaseModel):
     appid: int
     status: str | None = None
+
+
+class AutostartBody(BaseModel):
+    on: bool
 
 
 def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Path | None = None,
@@ -116,8 +123,37 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
 
     @app.get("/v1/mode")
     def mode():
+        controls = APP_CONTROLS.get("autostart")
+        try:
+            autostart = controls.autostart_enabled() if controls else None
+        except OSError:
+            autostart = None
         return {"mode": "local", "profile_id": profile.profile_id,
-                "sync": bool(profile.config.sync_settings(profile.profile_id).get("server"))}
+                "sync": bool(profile.config.sync_settings(profile.profile_id).get("server")),
+                "app": {"quit": bool(APP_CONTROLS.get("quit")), "autostart": autostart}}
+
+    @app.post("/v1/local/app/autostart")
+    def app_autostart(body: AutostartBody, x_oa_token: str | None = Header(default=None)):
+        """Start at login, where the app has no tray to switch it in (Linux)."""
+        check(x_oa_token)
+        controls = APP_CONTROLS.get("autostart")
+        if not controls:
+            raise HTTPException(400, {"code": "bad_request", "message": "Start at login is set in the tray here."})
+        try:
+            controls.set_autostart(body.on)
+            if not body.on:                  # turned off by the player: not switched on again
+                profile.config.edit(lambda c: c.setdefault("autostart", {}).__setitem__("offered", True))
+        except OSError as exc:
+            raise HTTPException(400, {"code": "bad_request", "message": str(exc)})
+        return {"autostart": controls.autostart_enabled()}
+
+    @app.post("/v1/local/app/quit")
+    def app_quit(x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        if not APP_CONTROLS.get("quit"):
+            raise HTTPException(400, {"code": "bad_request", "message": "Quit from the tray here."})
+        threading.Timer(0.3, APP_CONTROLS["quit"]).start()     # after this answer has gone out
+        return {"quitting": True}
 
     @app.get("/v1/library")
     def library():

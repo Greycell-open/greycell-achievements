@@ -42,8 +42,56 @@ def steam_dir() -> Path | None:
     elif sys.platform == "darwin":
         candidates.append(Path.home() / "Library" / "Application Support" / "Steam")
     else:
-        candidates += [Path.home() / ".steam" / "steam", Path.home() / ".local" / "share" / "Steam"]
+        candidates += linux_steam_dirs()
     return next((c for c in candidates if (c / "appcache" / "stats").is_dir()), None)
+
+
+def linux_steam_dirs(home: Path | None = None) -> list[Path]:
+    """Where Steam lives on Linux: the native client (and the Steam Deck), the
+    Flatpak and the Snap."""
+    home = Path(home or Path.home())
+    return [home / ".steam" / "steam", home / ".steam" / "root", home / ".local" / "share" / "Steam",
+            home / ".var" / "app" / "com.valvesoftware.Steam" / ".local" / "share" / "Steam",
+            home / "snap" / "steam" / "common" / ".local" / "share" / "Steam"]
+
+
+def library_paths(root: Path | None) -> list[Path]:
+    """Every Steam library folder: Steam's own and the ones in libraryfolders.vdf
+    (a second drive, an SD card on the Steam Deck)."""
+    if root is None:
+        return []
+    paths = [Path(root)]
+    try:
+        libraries = parse_text_vdf((Path(root) / "steamapps" / "libraryfolders.vdf").read_text(
+            encoding="utf-8", errors="replace")).get("libraryfolders", {})
+    except (OSError, SteamFileError):
+        libraries = {}
+    for value in libraries.values():
+        if isinstance(value, dict) and value.get("path") and Path(value["path"]) not in paths:
+            paths.append(Path(value["path"]))
+    return paths
+
+
+# A Windows game played through Proton keeps its saves in a Windows user folder
+# inside its own prefix, one per game: steamapps/compatdata/<appid>/pfx.
+PROTON_USER = ("pfx", "drive_c", "users", "steamuser")
+
+
+def proton_users(root: Path | None, appid: str | int | None = None) -> dict[str, Path]:
+    """appid -> the steamuser folder of its Proton prefix, in every library;
+    only the one game's when `appid` is given."""
+    found: dict[str, Path] = {}
+    for lib in library_paths(root):
+        compat = lib / "steamapps" / "compatdata"
+        try:
+            names = [str(appid)] if appid is not None else [e.name for e in os.scandir(compat) if e.name.isdigit()]
+        except OSError:
+            continue
+        for name in names:
+            user = compat.joinpath(name, *PROTON_USER)
+            if name not in found and user.is_dir():
+                found[name] = user
+    return found
 
 
 # ---- binary KeyValues (appcache/stats) ------------------------------------------------

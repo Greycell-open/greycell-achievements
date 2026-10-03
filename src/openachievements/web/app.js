@@ -120,6 +120,10 @@
         `<button type="button" role="menuitem" data-act="checkupdates"><span>Check for updates</span></button>` +
         `<button type="button" role="menuitem" data-act="sounds"><span>Sounds</span></button>` +
         `<button type="button" role="menuitem" data-act="about"><span>About</span></button>` +
+        (appControls.autostart !== null && appControls.autostart !== undefined
+          ? `<button type="button" role="menuitem" data-act="autostart"><span>Start at login</span>` +
+            (appControls.autostart ? `<span class="linked">\u2713 On</span>` : `<span class="muted">Off</span>`) + `</button>` : "") +
+        (appControls.quit ? `<button type="button" role="menuitem" data-act="quitapp"><span>Quit Greycell Achievements</span></button>` : "") +
         `</div></div>`);
       bits.push(`<a class="pill" href="${ROADMAP}" target="_blank" rel="noreferrer noopener">Roadmap</a>`);
       bits.push(`<span class="pill status">On this computer</span>`);
@@ -422,6 +426,7 @@
   }
 
   let appVersion = null, updating = false, updateFailed = false, syncConnected = false;
+  let appControls = {};                         // Start at login and Quit, where the app has no tray (Linux)
   async function pulse() {
     try {
       const p = await api("v1/local/pulse");
@@ -840,6 +845,18 @@
       if (t.closest && t.closest(".menu")) closeMenus();
       if (t.dataset.act === "checkupdates") return checkForUpdates();
       if (t.dataset.act === "about") return openAbout();
+      if (t.dataset.act === "autostart") {
+        const r = await api("v1/local/app/autostart", { method: "POST", body: JSON.stringify({ on: !appControls.autostart }) });
+        appControls.autostart = r.autostart; renderTop();
+        return toast(r.autostart ? "Greycell Achievements starts when you log in." : "It no longer starts when you log in.");
+      }
+      if (t.dataset.act === "quitapp") {
+        if (!confirm("Quit Greycell Achievements? Popups stop until you open it again.")) return;
+        await api("v1/local/app/quit", { method: "POST" });
+        document.body.innerHTML = `<main class="wrap"><h1>Greycell Achievements has quit</h1>` +
+          `<p class="muted">Open it again from your app menu to see your library.</p></main>`;
+        return;
+      }
       if (t.dataset.act === "ra") { $("raDialog").showModal(); return renderRa(); }
       if (t.dataset.act === "gog") { $("gogDialog").showModal(); return renderGog(); }
       if (t.dataset.act === "psn") { $("psnDialog").showModal(); return renderPsn(); }
@@ -860,8 +877,10 @@
         t.disabled = true; t.textContent = "Downloading\u2026";
         try {
           await api("v1/local/update/install", { method: "POST" });
-          $("updateNote").textContent = "Downloading the update. The installer opens in a moment, the app restarts " +
-            "by itself, and this page reloads when it is back.";
+          $("updateNote").textContent = appControls.quit       // Linux: the app replaces itself, no installer window
+            ? "Downloading the update. The app restarts by itself, and this page reloads when it is back."
+            : "Downloading the update. The installer opens in a moment, the app restarts " +
+              "by itself, and this page reloads when it is back.";
           updating = true;
         } catch (err) { t.disabled = false; t.textContent = "Install update"; toast(err.message); }
         return;
@@ -1003,6 +1022,7 @@
     const info = await fetch("v1/mode").then((r) => r.json()).catch(() => ({ mode: "server" }));
     mode = info.mode;
     syncConnected = Boolean(info.sync);
+    appControls = info.app || {};
     if (mode === "local") {
       $("apiLink").hidden = true;
       const st = await fetch("v1/local/steam").then((r) => r.json()).catch(() => ({}));

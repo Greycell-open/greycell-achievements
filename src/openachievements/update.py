@@ -89,10 +89,31 @@ def latest(repo: str, get: Callable[[str], dict] | None = None) -> dict | None:
             "page": data.get("html_url"), "notes": str(data.get("body") or "")[:2000]}
 
 
-def latest_setup(manifest: str, get: Callable[[str], dict] | None = None) -> dict | None:
-    """The newest Windows installer from the manifest, or None when it is not
-    one this version can trust (no version, no checksum, no safe address)."""
+def platform_key(system: str | None = None, machine: str | None = None) -> str:
+    """This build's entry in the manifest's "platforms": linux-x86_64,
+    linux-arm64, windows-x86_64, windows-arm64."""
+    import platform as _platform
+    system = system or sys.platform
+    machine = (machine or _platform.machine() or "").lower()
+    arch = {"amd64": "x86_64", "x86_64": "x86_64", "x64": "x86_64", "aarch64": "arm64", "arm64": "arm64"}.get(machine,
+                                                                                                         machine)
+    return f"{'windows' if system == 'win32' else 'linux' if system.startswith('linux') else system}-{arch}"
+
+
+def latest_setup(manifest: str, get: Callable[[str], dict] | None = None, key: str | None = None) -> dict | None:
+    """The newest build for this computer from the manifest, or None when it
+    is not one this version can trust (no version, no checksum, no safe
+    address). Windows reads the top-level installer, which every Windows
+    version since 1.0 knows; other systems read their own entry in
+    "platforms", and there is no update for a system that has none."""
     data = (get or _get_json)(manifest)
+    key = key or platform_key()
+    if not key.startswith("windows-"):
+        entry = (data.get("platforms") or {}).get(key)
+        if not isinstance(entry, dict):
+            return None
+        data = {"version": entry.get("version") or data.get("version"), "setup": entry.get("url"),
+                "sha256": entry.get("sha256"), "size": entry.get("size"), "notes": data.get("notes")}
     version = str(data.get("version") or "")
     setup, digest = str(data.get("setup") or ""), str(data.get("sha256") or "").lower()
     size = data.get("size")

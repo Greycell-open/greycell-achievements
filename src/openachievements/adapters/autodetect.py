@@ -153,13 +153,7 @@ def steam_install_dirs(root: Path | None) -> dict[str, int]:
     if root is None:
         return {}
     found = {}
-    try:
-        libraries = sf.parse_text_vdf((root / "steamapps" / "libraryfolders.vdf").read_text(
-            encoding="utf-8", errors="replace")).get("libraryfolders", {})
-    except (OSError, sf.SteamFileError):
-        libraries = {}
-    paths = {root} | {Path(v["path"]) for v in libraries.values() if isinstance(v, dict) and v.get("path")}
-    for lib in paths:
+    for lib in sf.library_paths(root):
         try:
             for entry in os.scandir(lib / "steamapps"):
                 if entry.name.startswith("appmanifest_") and entry.name.endswith(".acf"):
@@ -178,9 +172,7 @@ def find_save_folders(title: str, limit: int = 5) -> list[str]:
     if len(target) < 4:
         return []
     found = []
-    roots = [savefile.root_folder(r) for r in ("LOCALAPPDATA", "LOCALLOW", "APPDATA", "DOCUMENTS", "SAVED_GAMES")]
-    roots += [r / "My Games" for r in roots[3:4] if r]
-    for root in [r for r in roots if r and r.is_dir()]:
+    for root in [r for r in savefile.search_roots() if r.is_dir()]:
         stack = [(root, 0)]
         while stack and len(found) < limit:
             folder, depth = stack.pop()
@@ -242,9 +234,7 @@ def discover_saved_games(matcher: TitleMatcher, roots: list[Path] | None = None,
     holding save-like files: games that have been played on this computer,
     whatever their source. Reads names and dates only."""
     if roots is None:
-        found_roots = [savefile.root_folder(r) for r in ("LOCALAPPDATA", "LOCALLOW", "APPDATA", "DOCUMENTS",
-                                                        "SAVED_GAMES")]
-        roots = [r for r in found_roots if r] + [r / "My Games" for r in found_roots[3:4] if r]
+        roots = savefile.search_roots()
     found: dict[tuple, dict] = {}
     for root in [r for r in roots if r.is_dir()]:
         stack = [(root, 0)]

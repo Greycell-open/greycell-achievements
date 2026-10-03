@@ -18,6 +18,7 @@ GOOD = {"version": "9.1.0", "setup": "https://greycell.app/downloads/greycell-ac
 def fresh(monkeypatch):
     self_update.STATE.update(phase=None, error=None, version=None)
     monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.setattr(update, "platform_key", lambda *a: "windows-x86_64")   # these are the Windows app's updates
 
 
 def opener(body=BLOB):
