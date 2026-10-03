@@ -144,13 +144,14 @@ def percent(game_id: str, name: str, folder: Path | None = None, stable_id: str 
 
 
 def for_unlock(game_id: str, name: str, http=None, folder: Path | None = None,
-               stable_id: str | None = None) -> float | None:
+               stable_id: str | None = None, online: bool = True) -> float | None:
     """The percentage for an achievement that just unlocked: from the cache,
-    or fetched now if this game has none yet (one request)."""
+    or fetched now if this game has none yet (one request) and the player has
+    not switched rarity off."""
     appid = _appid(game_id)
     if not appid:
         return percent(game_id, name, folder, stable_id)  # RetroAchievements: from its sync, if any
-    if not fresh(appid, folder):
+    if online and not fresh(appid, folder):
         fetch(appid, http, folder)
     return percent(game_id, name, folder, stable_id)
 
@@ -186,6 +187,9 @@ class RarityCrawler:
         now = self.clock()
         if self._last is not None and now - self._last < PACE:
             return None
+        from . import privacy
+        if not privacy.allowed(self.profile.config, "rarity"):
+            return None                              # switched off by the player: Steam is not asked
         appid = self._next()
         if not appid:
             return None

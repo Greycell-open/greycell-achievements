@@ -174,6 +174,22 @@
     <div class="sound-body" id="soundBody"></div>
   </dialog>
 
+  <dialog id="privacyDialog" aria-labelledby="privacyTitle">
+    <div class="dialog-head">
+      <div><h2 id="privacyTitle">Privacy</h2><p>What goes online, and what you can switch off.</p></div>
+      <button type="button" class="close" id="closePrivacy" aria-label="Close">&times;</button>
+    </div>
+    <div class="sound-body">
+      <p>Your achievements stay on this computer. Greycell has no accounts and keeps no copy. The app reads the
+        accounts you link, and the achievement lists of games you add. Without being asked, it also does the three
+        things below; switch any of them off. What it already fetched stays usable.</p>
+      <div id="privacyBody"></div>
+      <p class="muted">None of these requests carries anything about you but the address every request has and which
+        game it is about. <a href="https://greycell.app/apps/greycell-achievements-privacy.html" target="_blank"
+        rel="noreferrer noopener">Privacy and code signing policy</a></p>
+    </div>
+  </dialog>
+
   <dialog id="aboutDialog" aria-labelledby="aboutTitle">
     <div class="dialog-head">
       <div class="about-head"><img src="assets/logo-64.png" alt="" width="48" height="48">
@@ -196,7 +212,8 @@
             trademarks belong to their owners. Greycell Achievements is not affiliated with or endorsed by any of them.</li>
           <li><strong>Sounds</strong> are made for this app, synthesised in its own code.</li>
           <li><strong>Built with</strong> Python, FastAPI, Starlette, Pydantic and Uvicorn; packaged with PyInstaller;
-            installed with Inno Setup by Jordan Russell and Martijn Laan.</li>
+            installed with Inno Setup by Jordan Russell and Martijn Laan. On Linux the popup is drawn with Pillow and
+            the DejaVu Sans font, and the app is an AppImage.</li>
         </ul>
       </div>
     </div>

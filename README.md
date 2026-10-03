@@ -245,6 +245,35 @@ owns the screen and hides it: Steam's and Xbox's popups draw inside the game,
 which Greycell Achievements does not do. On Linux it is the same card, drawn
 through X11 or XWayland; the Steam Deck's Game Mode shows only the game.
 
+## Privacy
+
+Your achievements stay on your computer; Greycell has no accounts and keeps no
+copy. The app goes online when you ask it to: to read the accounts you link,
+to fetch the achievement lists of the games you add or that it finds, and to
+sync with a server you set up. Without being asked it does three things, each
+of which **Settings, Privacy** switches off: it checks greycell.app for a new
+version (at start and once a day), fetches achievement pictures and game
+banners from the platforms' image hosts (once each), and asks Steam how rare
+your Steam achievements are. None of these carries anything about you but your
+network address and which game it is about. The Windows installer shows this
+before it installs. Full text:
+[greycell.app](https://greycell.app/apps/greycell-achievements-privacy.html).
+
+## Code signing policy
+
+Free code signing provided by [SignPath.io](https://signpath.io), certificate
+by [SignPath Foundation](https://signpath.org). The Windows installer and the
+app inside it are built from this repository by GitHub Actions
+(`.github/workflows/windows-release.yml`) and each release is signed only after
+a maintainer approves it in SignPath; Windows names SignPath Foundation as the
+publisher. Signing starts with the first release after the project is
+approved; until then the installers are unsigned. Every download is listed with
+its SHA-256 in greycell.app's update manifest, which the app checks before it
+installs an update.
+
+Team and roles: committers and reviewers, Zein Alaouie; release approvers,
+Zein Alaouie.
+
 ## Roadmap
 
 What is coming next (the Steam Deck's Game Mode, Windows on ARM, Linux on ARM,

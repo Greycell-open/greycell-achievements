@@ -1,0 +1,144 @@
+# The Windows release, built from this repository's source on GitHub's own
+# machines, and signed through SignPath once a maintainer approves it there.
+#
+# A version tag (v1.2.0) builds, tests, signs the app, packages it, signs the
+# installer, and attaches the signed installer and its update manifest to that
+# tag's GitHub release. greycell.app then serves those exact files. Without
+# the SignPath settings below (before the project is approved) everything runs
+# except signing, and the unsigned files stay a workflow artifact only, so no
+# unsigned installer is ever published from here.
+#
+# Settings, under Settings, Secrets and variables, Actions:
+#   secret   SIGNPATH_API_TOKEN       the SignPath CI user's API token
+#   variable SIGNPATH_ORGANIZATION_ID
+#   variable SIGNPATH_PROJECT_SLUG     e.g. greycell-achievements
+#   variable SIGNPATH_POLICY_SLUG      release-signing (needs approval) or test-signing
+name: Windows release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write          # attach the signed files to the release
+  actions: read            # SignPath reads this run's artifacts
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 300   # two approvals in SignPath can take a while
+    env:
+      SIGN: ${{ vars.SIGNPATH_ORGANIZATION_ID != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        id: python
+        with:
+          python-version: "3.14"
+
+      - name: Version
+        id: version
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
+          if ($env:GITHUB_REF_TYPE -eq "tag" -and $env:GITHUB_REF_NAME -ne "v$v") { throw "tag $env:GITHUB_REF_NAME is not v$v" }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Tests
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check -q fastapi uvicorn httpx pytest
+          python -m pytest -q -p no:warnings tests/
+
+      - name: Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build the app
+        shell: pwsh
+        run: scripts\build-exe.ps1 -DistPath dist -Python "${{ steps.python.outputs.python-path }}"
+
+      - name: Keep the app for signing
+        id: exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-unsigned
+          path: dist/GreycellAchievements.exe
+          if-no-files-found: error
+
+      - name: Sign the app
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.exe.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: "7200"
+          output-artifact-directory: signed-app
+
+      - name: Package the installer
+        shell: pwsh
+        run: |
+          if ($env:SIGN -eq "true") { Copy-Item signed-app\GreycellAchievements.exe dist\GreycellAchievements.exe -Force }
+          $notes = "release\notes-${{ steps.version.outputs.version }}.txt"
+          if (-not (Test-Path $notes)) { throw "no $notes" }
+          scripts\build-setup.ps1 -SkipExe -NotesFile $notes
+
+      - name: Keep the installer for signing
+        id: setup
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-unsigned
+          path: dist/GreycellAchievementsSetup.exe
+          if-no-files-found: error
+
+      - name: Sign the installer
+        if: env.SIGN == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.setup.outputs.artifact-id }}
+          wait-for-completion-timeout-in-seconds: "7200"
+          output-artifact-directory: signed-installer
+
+      - name: Check the signatures and write the manifest
+        if: env.SIGN == 'true'
+        shell: pwsh
+        run: |
+          Copy-Item signed-installer\GreycellAchievementsSetup.exe dist\GreycellAchievementsSetup.exe -Force
+          foreach ($f in "dist\GreycellAchievements.exe", "dist\GreycellAchievementsSetup.exe") {
+            $s = Get-AuthenticodeSignature $f
+            "$f : $($s.Status) $($s.SignerCertificate.Subject)"
+            if ($s.Status -ne "Valid") { throw "$f is not validly signed" }
+          }
+          scripts\build-setup.ps1 -ManifestOnly -NotesFile "release\notes-${{ steps.version.outputs.version }}.txt"
+          Copy-Item dist\latest.json dist\windows-latest.json
+
+      - name: Attach to the release
+        if: env.SIGN == 'true' && github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = "${{ steps.version.outputs.version }}"
+          gh release view $env:GITHUB_REF_NAME 2>$null
+          if ($LASTEXITCODE -ne 0) { gh release create $env:GITHUB_REF_NAME --title "Greycell Achievements $v" --notes-file "release\notes-$v.txt" }
+          gh release upload $env:GITHUB_REF_NAME "dist\GreycellAchievementsSetup-$v.exe" dist\windows-latest.json --clobber
+
+      - name: Keep the unsigned build (not published)
+        if: env.SIGN != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-build
+          path: |
+            dist/GreycellAchievementsSetup-*.exe
+            dist/latest.json
+          retention-days: 7

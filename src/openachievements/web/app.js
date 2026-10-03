@@ -119,6 +119,7 @@
         `<div class="menu" id="settingsMenu" role="menu" hidden>` +
         `<button type="button" role="menuitem" data-act="checkupdates"><span>Check for updates</span></button>` +
         `<button type="button" role="menuitem" data-act="sounds"><span>Sounds</span></button>` +
+        `<button type="button" role="menuitem" data-act="privacy"><span>Privacy</span></button>` +
         `<button type="button" role="menuitem" data-act="about"><span>About</span></button>` +
         (appControls.autostart !== null && appControls.autostart !== undefined
           ? `<button type="button" role="menuitem" data-act="autostart"><span>Start at login</span>` +
@@ -647,6 +648,19 @@
     if (s.linked && $("psnDialog").open) renderPsn.timer = setInterval(() => { if ($("psnDialog").open) renderPsn().catch(() => {}); }, 4000);
   }
 
+  // ---- privacy: what goes online without being asked ------------------------------
+  const PRIVACY = [
+    ["updates", "Check for new versions", "Looks at greycell.app when the app starts and once a day. Off: only when you choose Check for updates."],
+    ["pictures", "Achievement pictures and game banners", "Fetched once each from the platforms' image hosts, then kept on this computer."],
+    ["rarity", "How rare your Steam achievements are", "Asks Steam for each Steam game's unlock percentages, a few seconds apart."],
+  ];
+  async function renderPrivacy() {
+    const s = await api("v1/local/privacy");
+    $("privacyBody").innerHTML = PRIVACY.map(([key, label, hint]) =>
+      `<label class="toggle"><input type="checkbox" data-privacy="${key}"${s[key] ? " checked" : ""}> ${esc(label)}</label>` +
+      `<p class="muted">${esc(hint)}</p>`).join("");
+  }
+
   // ---- popups and sounds --------------------------------------------------------
   async function renderSounds() {
     const s = await api("v1/local/notify");
@@ -834,6 +848,8 @@
       if (t.dataset.act === "steam") { $("steamDialog").showModal(); return renderSteam(); }
       if (t.id === "closeSteam") return $("steamDialog").close();
       if (t.dataset.act === "sounds") { $("soundDialog").showModal(); return renderSounds(); }
+      if (t.dataset.act === "privacy") { $("privacyDialog").showModal(); return renderPrivacy(); }
+      if (t.id === "closePrivacy") return $("privacyDialog").close();
       if (t.id === "closeSound") return $("soundDialog").close();
       if (t.dataset.act === "links" || t.dataset.act === "settings") {
         const menu = $(t.dataset.act + "Menu"), open = menu.hidden;
@@ -969,6 +985,12 @@
     } catch (err) { toast(err.message); }
   });
   document.addEventListener("change", async (e) => {
+    if (e.target.dataset && e.target.dataset.privacy) {
+      try {
+        await api("v1/local/privacy", { method: "POST", body: JSON.stringify({ [e.target.dataset.privacy]: e.target.checked }) });
+      } catch (err) { toast(err.message); }
+      return renderPrivacy();
+    }
     if (e.target.id === "revealHidden") {
       revealAll = e.target.checked; store.set("oa_reveal_hidden", revealAll ? "1" : null);
       revealed.clear();

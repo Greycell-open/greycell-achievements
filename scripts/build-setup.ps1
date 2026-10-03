@@ -9,22 +9,30 @@
 param([string]$BaseUrl = "https://greycell.app/downloads/greycell-achievements",
       [string]$Notes = "",
       [string]$NotesFile = "",   # what's new, shown in the update popup; a file keeps line breaks
-      [switch]$SkipExe)          # package the dist\GreycellAchievements.exe already built (the exact one tested)
+      [switch]$SkipExe,          # package the dist\GreycellAchievements.exe already built (the exact one tested)
+      [switch]$ManifestOnly,     # only write latest.json for the installer already built (after it was signed)
+      [string]$Python = "")      # passed to build-exe.ps1
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $version = (Select-String -Path pyproject.toml -Pattern '^version = "(.+)"').Matches[0].Groups[1].Value
 New-Item -ItemType Directory -Force dist | Out-Null
-if ($SkipExe) {
+if ($ManifestOnly) {
+    if (-not (Test-Path dist\GreycellAchievementsSetup.exe)) { throw "no dist\GreycellAchievementsSetup.exe to describe" }
+} elseif ($SkipExe) {
     if (-not (Test-Path dist\GreycellAchievements.exe)) { throw "no dist\GreycellAchievements.exe to package" }
 } else {
-    & powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build-exe.ps1 -DistPath dist
+    $exeArgs = @("-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "scripts\build-exe.ps1", "-DistPath", "dist")
+    if ($Python) { $exeArgs += @("-Python", $Python) }               # an empty argument would be refused
+    & powershell @exeArgs
     if ($LASTEXITCODE -ne 0) { throw "exe build failed" }
 }
-$iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") |
-    Where-Object { Test-Path $_ } | Select-Object -First 1
-if (-not $iscc) { throw "Inno Setup 6 not found: winget install JRSoftware.InnoSetup" }
-& $iscc /Q "/DAppVersion=$version" installer\GreycellAchievements.iss
-if ($LASTEXITCODE -ne 0) { throw "installer build failed" }
+if (-not $ManifestOnly) {
+    $iscc = @("$env:LOCALAPPDATA\Programs\Inno Setup 6\ISCC.exe", "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe") |
+        Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $iscc) { throw "Inno Setup 6 not found: winget install JRSoftware.InnoSetup" }
+    & $iscc /Q "/DAppVersion=$version" installer\GreycellAchievements.iss
+    if ($LASTEXITCODE -ne 0) { throw "installer build failed" }
+}
 if ($NotesFile) { $Notes = [System.IO.File]::ReadAllText((Resolve-Path $NotesFile)).Trim() }
 $setup = Get-Item dist\GreycellAchievementsSetup.exe
 $hash = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()

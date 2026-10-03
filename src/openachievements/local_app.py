@@ -78,6 +78,12 @@ class AutostartBody(BaseModel):
     on: bool
 
 
+class PrivacyBody(BaseModel):
+    updates: bool | None = None
+    pictures: bool | None = None
+    rarity: bool | None = None
+
+
 def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Path | None = None,
                      steam_signin=None) -> FastAPI:
     from .adapters import steam_account
@@ -131,6 +137,18 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         return {"mode": "local", "profile_id": profile.profile_id,
                 "sync": bool(profile.config.sync_settings(profile.profile_id).get("server")),
                 "app": {"quit": bool(APP_CONTROLS.get("quit")), "autostart": autostart}}
+
+    @app.get("/v1/local/privacy")
+    def privacy_state():
+        from . import privacy
+        return privacy.settings(profile.config.load())
+
+    @app.post("/v1/local/privacy")
+    def privacy_change(body: PrivacyBody, x_oa_token: str | None = Header(default=None)):
+        """The player's switches for what goes online without being asked."""
+        check(x_oa_token)
+        from . import privacy
+        return privacy.change(profile.config, **body.model_dump(exclude_none=True))
 
     @app.post("/v1/local/app/autostart")
     def app_autostart(body: AutostartBody, x_oa_token: str | None = Header(default=None)):
@@ -423,8 +441,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     def art(u: str = ""):
         """An achievement or game picture from a platform's image host, kept on
         this computer after the first time (art.py). Other addresses: 404."""
-        from . import art as pictures
-        return _picture(pictures.cached(u))
+        from . import art as pictures, privacy
+        return _picture(pictures.cached(u, online=privacy.allowed(profile.config, "pictures")))
 
     @app.get("/v1/local/art/game/{game_id}")
     def game_art(game_id: str):
@@ -446,7 +464,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
             linked.append(f"steam-{steam}")
         entry = {"game_id": game_id, "icon_url": game.get("icon_url"),
                  "linked_games": [{"game_id": gid} for gid in linked]}
-        return _picture(pictures.game_picture(entry, root))
+        from . import privacy
+        return _picture(pictures.game_picture(entry, root, online=privacy.allowed(profile.config, "pictures")))
 
     @app.get("/v1/local/update")
     def update_status(force: bool = False):

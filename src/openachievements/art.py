@@ -110,15 +110,19 @@ def _missing_recently(marker: Path, now: float) -> bool:
 
 
 def cached(url: str, fetch: Callable[[str], tuple[str, bytes]] | None = None, folder: Path | None = None,
-           now: float | None = None) -> Path | None:
+           now: float | None = None, online: bool = True) -> Path | None:
     """The local copy of an allowed image URL, fetched once; None when it is
-    not allowed, not an image, too large, or not there (remembered a day)."""
+    not allowed, not an image, too large, or not there (remembered a day).
+    With `online` False (the player switched pictures off) only copies already
+    on this computer are used."""
     if not allowed(url):
         return None
     folder = Path(folder or cache_dir())
     path, miss = folder / (_name(url) + ".img"), folder / (_name(url) + ".miss")
     if path.exists():
         return path
+    if not online:
+        return None
     now = time.time() if now is None else now
     if _missing_recently(miss, now):
         return None
@@ -158,7 +162,7 @@ def _get_json(url: str) -> dict:
 
 
 def steam_banner(appid: str, steam_root: Path | None, fetch=None, get_json=None, folder: Path | None = None,
-                 now: float | None = None) -> Path | None:
+                 now: float | None = None, online: bool = True) -> Path | None:
     if not str(appid).isdigit():
         return None
     folder = Path(folder or cache_dir())
@@ -169,6 +173,8 @@ def steam_banner(appid: str, steam_root: Path | None, fetch=None, get_json=None,
             return local
     if by_app.exists():                                  # found before, also through the store: works offline
         return by_app
+    if not online:
+        return cached(STEAM_HEADER.format(appid=appid), fetch, folder, now, online=False)
     found = cached(STEAM_HEADER.format(appid=appid), fetch, folder, now)
     if found:
         return found
@@ -197,5 +203,5 @@ def game_picture(game: dict, steam_root: Path | None, **kw) -> Path | None:
             if found:
                 return found
     if game.get("icon_url"):
-        return cached(game["icon_url"], kw.get("fetch"), kw.get("folder"), kw.get("now"))
+        return cached(game["icon_url"], kw.get("fetch"), kw.get("folder"), kw.get("now"), kw.get("online", True))
     return None

@@ -168,8 +168,10 @@ def card(profile, event: dict, prefs: dict | None = None, rarity_of=None) -> dic
         from . import rarity
         try:
             stable = definition.get("external_id")           # Steam's api name, RetroAchievements' id
+            from . import privacy
             pct = (rarity_of(event.get("game_id") or "", name) if rarity_of
-                   else rarity.for_unlock(event.get("game_id") or "", name, stable_id=stable))
+                   else rarity.for_unlock(event.get("game_id") or "", name, stable_id=stable,
+                                          online=privacy.allowed(profile.config, "rarity")))
         except Exception:  # noqa: BLE001 - no rarity is never a reason to lose the popup
             pct = None
         if pct is not None and pct < float(prefs.get("rare_below", DEFAULTS["rare_below"])):
@@ -243,7 +245,10 @@ class Notifier:
                 # Local signals (saves, play sessions) always say why; platform
                 # imports bring thousands of old unlocks and would flood the log.
                 print(f"popup: no popup for {e.get('achievement_id')}: {reason}")
-        add_pictures(cards, [c.pop("_picture", None) for c in cards])
+        from . import art, privacy
+        offline = None if privacy.allowed(self.profile.config, "pictures") else \
+            (lambda url: art.cached(url, online=False))     # pictures switched off: only what is already here
+        add_pictures(cards, [c.pop("_picture", None) for c in cards], cached=offline)
         cards += platinum_cards(self.profile, events, prefs, now)
         if cards:
             names = ", ".join(f"{c['name']} ({c['game']})" + (f" rare, {c['rare']:g}%" if "rare" in c else "") for c in cards)

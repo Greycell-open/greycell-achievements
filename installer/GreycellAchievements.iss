@@ -37,6 +37,8 @@ SetupIconFile=..\src\openachievements\web\favicon.ico
 UninstallDisplayIcon={app}\GreycellAchievements.exe
 UninstallDisplayName=Greycell Achievements
 WizardStyle=modern
+; Shown before installing (not during a /SILENT update): what goes online, and the switches for it.
+InfoBeforeFile=before-you-install.txt
 Compression=lzma2/max
 SolidCompression=yes
 CloseApplications=force

@@ -1,0 +1,4 @@
+Greycell Achievements 1.1.1
+- New Settings, Privacy: switch off update checks, achievement pictures or Steam rarity, the three things the app does online without being asked.
+- With update checks off, the app no longer looks for a new version when it starts.
+- The installer says what goes online before it installs.

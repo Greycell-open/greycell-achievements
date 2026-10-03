@@ -232,7 +232,12 @@ def look_once(config_store, quit_app: Callable[[], None], playing: Callable[[], 
               ask: Callable[[str, str], bool] = _ask, tell: Callable[[str, str], None] = _tell,
               start: Callable = install, force: bool = False) -> str:
     """One look: what happened, for tests and the log. `force` asks
-    greycell.app now (the app does that every time it starts)."""
+    greycell.app now (the app does that every time it starts). Nothing at
+    all when the player switched update checks off: `force` only skips the
+    daily wait, it never overrides that."""
+    from . import privacy
+    if not privacy.allowed(config_store, "updates"):
+        return "off"
     status = update.check(config_store, force=force)
     release = status.get("available")
     if not (status.get("installable") and release):

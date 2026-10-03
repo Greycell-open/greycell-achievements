@@ -6,12 +6,13 @@
 # required) in a throwaway environment under .build\, plus PyInstaller.
 # Writes GreycellAchievements.exe in the project folder; it is attached to
 # GitHub releases and never committed. Unsigned, so SmartScreen may ask once.
-param([string]$DistPath = ".")   # another folder when a copy is running from this one
+param([string]$DistPath = ".",   # another folder when a copy is running from this one
+      [string]$Python = "")        # a python.exe to build with; else the py launcher's newest Python 3
 $ErrorActionPreference = "Stop"
 Set-Location (Split-Path $PSScriptRoot -Parent)
 $venv = ".build\venv"
 if (-not (Test-Path "$venv\Scripts\python.exe")) {
-    py -3 -m venv $venv
+    if ($Python) { & $Python -m venv $venv } else { py -3 -m venv $venv }
     & "$venv\Scripts\python" -m pip install -q --disable-pip-version-check --require-hashes --no-deps -r requirements\server.lock
     & "$venv\Scripts\python" -m pip install -q --disable-pip-version-check "pyinstaller==6.16.0"
 }
