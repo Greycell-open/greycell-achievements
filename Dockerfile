@@ -21,6 +21,18 @@ COPY examples ./examples
 COPY tests ./tests
 RUN python -m pytest -q -p no:warnings -p no:cacheprovider tests
 
+# greycell.app's community stats (community_server.py): anonymous counts in,
+# one snapshot a day out. No access log, so no addresses are written anywhere.
+#   docker build --target community -t greycell-community .
+FROM base AS community
+ENV COMMUNITY_DB=/data/community.sqlite
+RUN useradd --system --uid 10002 --home /data community && mkdir -p /data && chown community /data
+USER community
+VOLUME ["/data"]
+EXPOSE 8794
+HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request,sys; sys.exit(0 if b'ok' in urllib.request.urlopen('http://127.0.0.1:8794/api/achievements/healthz').read() else 1)"
+CMD ["python", "-m", "uvicorn", "openachievements.community_server:app", "--host", "0.0.0.0", "--port", "8794", "--no-access-log"]
+
 # The server. Last, so a plain `docker build .` or `docker compose up` builds it.
 FROM base AS server
 ENV OA_DATA_DIR=/data OA_PORT=8787

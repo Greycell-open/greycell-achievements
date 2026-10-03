@@ -11,9 +11,10 @@ def no_network(*a, **k):
 
 
 def test_everything_is_on_until_the_player_switches_it_off(profile):
-    assert privacy.settings(profile.config.load()) == {"updates": True, "pictures": True, "rarity": True}
+    assert privacy.settings(profile.config.load()) == {"updates": True, "pictures": True, "rarity": True,
+                                                       "stats": True}
     assert privacy.change(profile.config, pictures=False, rarity=False) == \
-        {"updates": True, "pictures": False, "rarity": False}
+        {"updates": True, "pictures": False, "rarity": False, "stats": True}
     assert privacy.change(profile.config, updates=False)["updates"] is False
     assert profile.config.load()["update"]["check"] is False                  # the same switch the CLI has
     with pytest.raises(ValueError):
@@ -55,9 +56,10 @@ def test_the_page_shows_and_changes_the_switches_with_its_token(profile, monkeyp
     from fastapi.testclient import TestClient
     from openachievements.local_app import create_local_app
     page = TestClient(create_local_app(profile, token="t" * 32), base_url="http://127.0.0.1:8788")
-    assert page.get("/v1/local/privacy").json() == {"updates": True, "pictures": True, "rarity": True}
+    assert page.get("/v1/local/privacy").json() == {"updates": True, "pictures": True, "rarity": True,
+                                                     "stats": True, "notice": True}
     assert page.post("/v1/local/privacy", json={"pictures": False}).status_code == 403
     r = page.post("/v1/local/privacy", json={"pictures": False}, headers={"X-OA-Token": "t" * 32})
-    assert r.json() == {"updates": True, "pictures": False, "rarity": True}
+    assert r.json() == {"updates": True, "pictures": False, "rarity": True, "stats": True}
     monkeypatch.setattr(art, "_fetch", no_network)
     assert page.get("/v1/local/art", params={"u": "https://shared.akamai.steamstatic.com/new.jpg"}).status_code == 404

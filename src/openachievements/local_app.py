@@ -82,6 +82,7 @@ class PrivacyBody(BaseModel):
     updates: bool | None = None
     pictures: bool | None = None
     rarity: bool | None = None
+    stats: bool | None = None
 
 
 def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Path | None = None,
@@ -141,7 +142,16 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     @app.get("/v1/local/privacy")
     def privacy_state():
         from . import privacy
-        return privacy.settings(profile.config.load())
+        config = profile.config.load()
+        return {**privacy.settings(config), "notice": privacy.notice_due(config)}
+
+    @app.post("/v1/local/privacy/notice")
+    def privacy_notice(x_oa_token: str | None = Header(default=None)):
+        """The first-run notice about anonymous stats was shown: not again."""
+        check(x_oa_token)
+        from . import privacy
+        privacy.notice_seen(profile.config)
+        return {"notice": False}
 
     @app.post("/v1/local/privacy")
     def privacy_change(body: PrivacyBody, x_oa_token: str | None = Header(default=None)):
@@ -388,17 +398,27 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     def catalog_add(body: AddBody, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
         try:
-            return cat.add_to_profile(profile, catalogue(), body.appid, status=body.status)
+            added = cat.add_to_profile(profile, catalogue(), body.appid, status=body.status)
         except (cat.CatalogError, ProfileError) as exc:
             raise HTTPException(400, {"code": "bad_request", "message": str(exc)}) from None
+        from . import community                              # the player added it: an anonymous count
+        community.note(profile.config, "added", "steam", appid=body.appid)
+        if body.status in ("backlog", "completed"):
+            community.note(profile.config, body.status, "steam", appid=body.appid)
+        return added
 
     @app.post("/v1/local/status")
     def status(body: StatusBody, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
         try:
-            return {"event": profile.set_status(body.game_id, body.status)}
+            event = profile.set_status(body.game_id, body.status)
         except ProfileError as exc:
             raise HTTPException(400, {"code": "bad_request", "message": str(exc)}) from None
+        if body.status in ("backlog", "completed"):          # the player chose the shelf: an anonymous count
+            from . import community
+            community.note(profile.config, body.status, community.platform_of(body.game_id),
+                           appid=community.steam_ref(body.game_id))
+        return {"event": event}
 
     @app.post("/v1/local/games/{game_id}/fetch-achievements")
     def fetch_achievements(game_id: str, x_oa_token: str | None = Header(default=None)):

@@ -263,3 +263,4 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
 .credits { margin: 0; padding-left: 18px; display: grid; gap: 8px; color: var(--muted); font-size: 13px; }
 .credits strong { color: var(--text); }
 button.link { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }

@@ -174,15 +174,31 @@
     <div class="sound-body" id="soundBody"></div>
   </dialog>
 
+  <dialog id="noticeDialog" aria-labelledby="noticeTitle">
+    <div class="dialog-head">
+      <div><h2 id="noticeTitle">Welcome to Greycell Achievements</h2></div>
+    </div>
+    <div class="sound-body">
+      <p>Your achievements stay on this computer; they are yours. To show live numbers on greycell.app, the app
+        shares anonymous counts once an hour: how many achievements unlocked and which, and games completed or
+        added. Never who you are.</p>
+      <p class="muted">You can turn this off now, or any time in Settings, Privacy.</p>
+      <div class="dialog-actions">
+        <button type="button" class="pill" id="noticeOff">Turn it off</button>
+        <button type="button" class="pill add" id="noticeOk">OK</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="privacyDialog" aria-labelledby="privacyTitle">
     <div class="dialog-head">
       <div><h2 id="privacyTitle">Privacy</h2><p>What goes online, and what you can switch off.</p></div>
       <button type="button" class="close" id="closePrivacy" aria-label="Close">&times;</button>
     </div>
     <div class="sound-body">
-      <p>Your achievements stay on this computer. Greycell has no accounts and keeps no copy. The app reads the
-        accounts you link, and the achievement lists of games you add. Without being asked, it also does the three
-        things below; switch any of them off. What it already fetched stays usable.</p>
+      <p>Your achievements stay on this computer. Greycell has no accounts and keeps no copy of your library. The
+        app reads the accounts you link, and the achievement lists of games you add. Without being asked, it also
+        does the four things below; switch any of them off. What it already fetched stays usable.</p>
       <div id="privacyBody"></div>
       <p class="muted">None of these requests carries anything about you but the address every request has and which
         game it is about. <a href="https://greycell.app/apps/greycell-achievements-privacy.html" target="_blank"

@@ -248,14 +248,18 @@ through X11 or XWayland; the Steam Deck's Game Mode shows only the game.
 ## Privacy
 
 Your achievements stay on your computer; Greycell has no accounts and keeps no
-copy. The app goes online when you ask it to: to read the accounts you link,
-to fetch the achievement lists of the games you add or that it finds, and to
-sync with a server you set up. Without being asked it does three things, each
-of which **Settings, Privacy** switches off: it checks greycell.app for a new
-version (at start and once a day), fetches achievement pictures and game
-banners from the platforms' image hosts (once each), and asks Steam how rare
-your Steam achievements are. None of these carries anything about you but your
-network address and which game it is about. The Windows installer shows this
+copy of your library. The app goes online when you ask it to: to read the
+accounts you link, to fetch the achievement lists of the games you add or that
+it finds, and to sync with a server you set up. Without being asked it does
+four things, each of which **Settings, Privacy** switches off: it checks
+greycell.app for a new version (at start and once a day), fetches achievement
+pictures and game banners from the platforms' image hosts (once each), asks
+Steam how rare your Steam achievements are, and shares anonymous counts with
+greycell.app once an hour for its [community stats](https://greycell.app/apps/greycell-achievements-stats.html)
+(achievements unlocked, games completed, added or put on the Backlog, new
+installs; Steam games by their Steam ids; never who you are). Sharing is on by
+default and the app says so the first time it opens; the service
+(`community_server.py`) keeps no addresses. The Windows installer shows this
 before it installs. Full text:
 [greycell.app](https://greycell.app/apps/greycell-achievements-privacy.html).
 

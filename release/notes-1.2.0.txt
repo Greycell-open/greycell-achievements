@@ -1,0 +1,3 @@
+Greycell Achievements 1.2.0
+- Community stats on greycell.app: achievements unlocked, Platinums, games completed and added, updated once a day.
+- The app shares anonymous counts for them once an hour. Never who you are; your library stays on your computer. It is on by default and you can turn it off in Settings, Privacy.

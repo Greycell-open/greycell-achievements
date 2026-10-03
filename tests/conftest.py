@@ -67,6 +67,19 @@ def _no_real_linux_desktop(tmp_path_factory):
     mp.undo()
 
 
+@pytest.fixture(autouse=True)
+def _no_community_network():
+    """Tests never send anonymous stats to greycell.app."""
+    from openachievements import community
+    mp = pytest.MonkeyPatch()
+
+    def refuse(url, body):
+        raise OSError("tests never send community stats")
+    mp.setattr(community, "_post", refuse)
+    yield
+    mp.undo()
+
+
 @pytest.fixture
 def home(tmp_path):
     return tmp_path / "home"

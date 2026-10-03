@@ -653,7 +653,14 @@
     ["updates", "Check for new versions", "Looks at greycell.app when the app starts and once a day. Off: only when you choose Check for updates."],
     ["pictures", "Achievement pictures and game banners", "Fetched once each from the platforms' image hosts, then kept on this computer."],
     ["rarity", "How rare your Steam achievements are", "Asks Steam for each Steam game's unlock percentages, a few seconds apart."],
+    ["stats", "Share anonymous stats with greycell.app", "Once an hour: how many achievements unlocked and which, games completed or added. Never who you are; your library stays here."],
   ];
+  async function firstRunNotice() {                 // said once, the first time the app opens (owner, 2026-10-03)
+    const s = await api("v1/local/privacy").catch(() => null);
+    if (!s || !s.notice) return;
+    $("noticeDialog").showModal();
+    api("v1/local/privacy/notice", { method: "POST" }).catch(() => {});
+  }
   async function renderPrivacy() {
     const s = await api("v1/local/privacy");
     $("privacyBody").innerHTML = PRIVACY.map(([key, label, hint]) =>
@@ -850,6 +857,12 @@
       if (t.dataset.act === "sounds") { $("soundDialog").showModal(); return renderSounds(); }
       if (t.dataset.act === "privacy") { $("privacyDialog").showModal(); return renderPrivacy(); }
       if (t.id === "closePrivacy") return $("privacyDialog").close();
+      if (t.id === "noticeOk") return $("noticeDialog").close();
+      if (t.id === "noticeOff") {
+        await api("v1/local/privacy", { method: "POST", body: JSON.stringify({ stats: false }) }).catch((err) => toast(err.message));
+        $("noticeDialog").close();
+        return toast("Anonymous stats are off. Turn them back on in Settings, Privacy.");
+      }
       if (t.id === "closeSound") return $("soundDialog").close();
       if (t.dataset.act === "links" || t.dataset.act === "settings") {
         const menu = $(t.dataset.act + "Menu"), open = menu.hidden;
@@ -1045,6 +1058,7 @@
     mode = info.mode;
     syncConnected = Boolean(info.sync);
     appControls = info.app || {};
+    if (mode === "local") firstRunNotice();
     if (mode === "local") {
       $("apiLink").hidden = true;
       const st = await fetch("v1/local/steam").then((r) => r.json()).catch(() => ({}));

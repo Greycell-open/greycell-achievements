@@ -34,8 +34,11 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
     from .notify import Notifier
 
     popup = Notifier(profile)
+    from . import community
+    round_events: list[dict] = []
 
     def show(e: dict) -> None:
+        round_events.append(e)
         if e["event_type"] == "achievement.unlocked":
             say(f"  unlocked {e['achievement_id']}  ({e['payload'].get('provenance')})")
             popup.add(e)
@@ -104,6 +107,14 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
             popup.flush()                                     # the round's fresh unlocks, one popup each
         except Exception as exc:  # noqa: BLE001 - a popup is a nicety; keep watching
             complain(exc)
+        try:                                                  # anonymous counts for greycell.app, if shared
+            community.from_round(profile, round_events)
+            sent = community.send(profile.config)
+            if sent.startswith(("sent", "refused")):
+                say(f"  community stats: {sent}")
+        except Exception as exc:  # noqa: BLE001 - stats are a nicety; keep watching
+            complain(exc)
+        round_events.clear()
         if stop:
             stop.wait(interval)
         else:

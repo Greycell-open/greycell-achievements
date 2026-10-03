@@ -9,7 +9,11 @@ Without being asked, the app:
   - fetches achievement pictures and game banners from the platforms' image
     hosts, once each, then keeps them on this computer ("pictures");
   - asks Steam for each Steam game's unlock percentages, for rare
-    achievements ("rarity").
+    achievements ("rarity");
+  - shares anonymous counts with greycell.app once an hour: achievements
+    unlocked, games completed or added, and that it was installed, never by
+    whom ("stats", community.py; owner, 2026-10-03: on by default, said once
+    on first run).
 
 None of these requests carries anything about the player but the address
 every request has, and which game it is about. Each can be switched off; what
@@ -17,15 +21,16 @@ was already fetched stays usable. The installer and greycell.app say the same.
 """
 from __future__ import annotations
 
-SWITCHES = ("updates", "pictures", "rarity")
+SWITCHES = ("updates", "pictures", "rarity", "stats")
 
 
 def settings(config: dict) -> dict:
-    """{"updates", "pictures", "rarity"}: True unless the player switched it off."""
+    """{"updates", "pictures", "rarity", "stats"}: True unless the player switched it off."""
     network = config.get("network") or {}
     return {"updates": (config.get("update") or {}).get("check", True) is not False,
             "pictures": network.get("pictures", True) is not False,
-            "rarity": network.get("rarity", True) is not False}
+            "rarity": network.get("rarity", True) is not False,
+            "stats": network.get("stats", True) is not False}
 
 
 def change(config_store, **switches: bool) -> dict:
@@ -36,11 +41,20 @@ def change(config_store, **switches: bool) -> dict:
     def apply(config: dict) -> None:
         if "updates" in switches:
             config.setdefault("update", {})["check"] = bool(switches["updates"])
-        for key in ("pictures", "rarity"):
+        for key in ("pictures", "rarity", "stats"):
             if key in switches:
                 config.setdefault("network", {})[key] = bool(switches[key])
     config_store.edit(apply)
     return settings(config_store.load())
+
+
+def notice_due(config: dict) -> bool:
+    """The one-time first-run notice about sharing: not yet seen."""
+    return not (config.get("community") or {}).get("notice_seen")
+
+
+def notice_seen(config_store) -> None:
+    config_store.edit(lambda c: c.setdefault("community", {}).__setitem__("notice_seen", True))
 
 
 def allowed(config_store, switch: str) -> bool:

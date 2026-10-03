@@ -208,6 +208,12 @@ def serve_in_tray(background: bool) -> int:
     created = _first_profile()
     profile = Profile.open()
     _autostart_by_default(profile)
+    if getattr(sys, "frozen", False) and not os.environ.get("GREYCELL_ACHIEVEMENTS_PORT"):
+        from . import community                          # a new install, counted once and anonymously
+        try:
+            community.first_run(profile.config)
+        except Exception as exc:  # noqa: BLE001 - a count is never a reason not to start
+            print(f"community stats: {exc}")
     stop_watching = start_in_background(profile)
     server = uvicorn.Server(uvicorn.Config(create_local_app(profile), host="127.0.0.1", port=PORT,
                                            log_level="warning", log_config=None))

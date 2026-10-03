@@ -1,6 +1,6 @@
 Greycell Achievements: what goes online
 
-Your achievements stay on this computer, in a folder you own. Greycell has no accounts and keeps no copy of anything.
+Your achievements stay on this computer, in a folder you own. Greycell has no accounts and keeps no copy of your library.
 
 The app goes online when you ask it to: to read the accounts you link (Steam, PlayStation, Xbox, GOG, RetroAchievements), and to fetch the achievement lists of the games you add or that it finds on this computer.
 
@@ -8,8 +8,9 @@ Without being asked, it also:
 
   - checks greycell.app for a new version when it starts and once a day;
   - fetches achievement pictures and game banners from the platforms' image hosts, once each;
-  - asks Steam how rare your Steam achievements are.
+  - asks Steam how rare your Steam achievements are;
+  - shares anonymous counts with greycell.app once an hour, for its community stats: achievements unlocked and when, games completed, added or put on the Backlog, and that the app was installed. For Steam games it names the game and achievement by Steam's ids. Never who you are: no account, name, install id or file path. This one is on by default.
 
-You can switch each of these off in the app, under Settings, Privacy. None of them sends anything about you but your network address, which every request has, and which game it is about.
+You can switch each of these off in the app, under Settings, Privacy. None of them sends anything about you but your network address, which every request has; the stats service does not keep it.
 
 Privacy and code signing policy: https://greycell.app/apps/greycell-achievements-privacy.html
