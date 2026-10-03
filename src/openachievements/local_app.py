@@ -39,6 +39,8 @@ class NotifyBody(BaseModel):
     steam: bool | None = None
     unlock_sound: str | None = None
     platinum_sound: str | None = None
+    rare_sound: str | None = None
+    rare_below: float | None = None
 
 
 class PreviewBody(BaseModel):
@@ -233,7 +235,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     def notify_settings():
         from . import notify, sounds
         return {**notify.settings(profile.config.load()), "choices": sounds.choices(),
-                "custom": {k: notify.custom_file(profile, k).exists() for k in ("unlock", "platinum")}}
+                "custom": {k: notify.custom_file(profile, k).exists() for k in ("unlock", "platinum", "rare")},
+                "rare_choices": list(notify.RARE_CHOICES)}
 
     @app.post("/v1/local/notify")
     def notify_change(body: NotifyBody, x_oa_token: str | None = Header(default=None)):
@@ -250,17 +253,18 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         """Play a sound on this computer, so the choice can be heard first."""
         check(x_oa_token)
         from . import notify, sounds, toast
-        kind = "platinum" if body.kind == "platinum" else "unlock"
-        table = sounds.PLATINUM if kind == "platinum" else sounds.UNLOCK
+        kind = body.kind if body.kind in ("platinum", "rare") else "unlock"
+        table = sounds.TABLES[kind][0]()
+        extra = {"kind": "rare"} if kind == "rare" else {}
         if body.name == sounds.CUSTOM:
             path = notify.custom_file(profile, kind)
             if not path.exists():
                 raise HTTPException(400, {"code": "bad_request", "message": "choose a sound file first"})
-            toast._play_chime(kind == "platinum", "custom", str(path))
+            toast._play_chime(kind == "platinum", "custom", str(path), **extra)
             return {"ok": True}
         if body.name not in table:
             raise HTTPException(400, {"code": "bad_request", "message": "no such sound"})
-        toast._play_chime(kind == "platinum", body.name)
+        toast._play_chime(kind == "platinum", body.name, **extra)
         return {"ok": True}
 
     @app.post("/v1/local/notify/custom/{kind}")
@@ -269,8 +273,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         this machine's settings folder. Never synced, never uploaded."""
         check(x_oa_token)
         from . import notify, sounds
-        if kind not in ("unlock", "platinum"):
-            raise HTTPException(404, {"code": "not_found", "message": "unlock or platinum"})
+        if kind not in ("unlock", "platinum", "rare"):
+            raise HTTPException(404, {"code": "not_found", "message": "unlock, rare or platinum"})
         data = await request.body()
         try:
             sounds.check_custom_wav(data)

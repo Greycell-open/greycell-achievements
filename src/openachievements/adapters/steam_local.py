@@ -130,7 +130,7 @@ def plan_game(profile: Profile, state: dict, known: set, stats_dir: Path, link_i
             game = entry["pack"]["games"][0]
             packs.append(make("game.registered", {"title": game["title"], "platform": game["platform"],
                                                   "external_ids": game["external_ids"]}, game_id=game_id))
-        description = validate_definitions(entry["pack"], entry["achievements"])
+        description = validate_definitions(entry["pack"], cat.without_rarity(entry["achievements"]))
         kind = "pack.updated" if installed and not installed.get("removed") else "pack.installed"
         packs.extend(make(kind, payload) for payload in split_for_events(description))
     unlocks = []
@@ -253,7 +253,7 @@ def add_catalogue_packs(profile: Profile, index: cat.CatalogIndex | None, limit:
             continue
         try:
             entry = index.get(appid)
-            description = validate_definitions(entry["pack"], entry["achievements"]) if entry else None
+            description = validate_definitions(entry["pack"], cat.without_rarity(entry["achievements"])) if entry else None
         except (PackError, OSError, ValueError, KeyError, TypeError):
             continue
         if not description:

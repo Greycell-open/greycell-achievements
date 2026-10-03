@@ -78,7 +78,7 @@ def test_a_game_becomes_a_valid_pack_with_unique_ids():
     assert ids == ["first-steps", "secret-ending", "tom-jerry", "first-steps-2"]
     assert entry["pack"]["id"] == "steam-10" and entry["pack"]["source"] == "steam-catalog"
     assert entry["pack"]["games"][0]["external_ids"] == {"steam": 10}
-    assert entry["achievements"][0]["rarity"] == "91.2% of players"
+    assert "rarity" not in entry["achievements"][0]          # a percentage is not history: rarity.py keeps it
     assert [a["hidden"] for a in entry["achievements"]] == [False, True, False, False]   # blank = hidden
 
 

@@ -31,6 +31,8 @@ HOLD_S = 5.0
 PANEL, LINE, TEXT, MUTED, ACCENT = (0x15, 0x16, 0x1C), (0x2C, 0x2F, 0x3A), (0xF4, 0xF5, 0xF7), \
     (0xA3, 0xA8, 0xB8), (0x34, 0xD3, 0x99)
 PLATINUM, GOLD = (0xE5, 0xE4, 0xE2), (0xF5, 0xC4, 0x51)
+SILVER_LIGHT, SILVER = (0xF4, 0xF6, 0xFA), (0x9C, 0xA6, 0xB4)    # a rare achievement: the Platinum card in silver
+ICON = 56                                                         # the achievement picture, in the circle
 
 WS_POPUP = 0x80000000
 WS_EX = 0x00080000 | 0x00000020 | 0x08000000 | 0x00000080 | 0x00000008
@@ -144,33 +146,39 @@ def png_rgba(path: Path) -> tuple[int, int, bytes]:
     return width, height, bytes(rows)
 
 
-def card_pixels(platinum: bool = False) -> list[list[float]]:
+def card_pixels(platinum: bool | str = False, logo: bool = True) -> list[list[float]]:
     """The card without text: [r, g, b, a] per pixel, colour not premultiplied.
     A soft rounded panel with a 1 px edge and the app's trophy logo on top.
-    Platinum: a 2 px edge running from platinum to gold, and a warm glow."""
+    Platinum: a 2 px edge running from platinum to gold, and a warm glow.
+    "rare": the same in silver, a cool glow."""
+    style = "platinum" if platinum is True else (platinum or "plain")
+    special = style in ("platinum", "rare")
+    a_col, b_col = (PLATINUM, GOLD) if style == "platinum" else (SILVER_LIGHT, SILVER)
     px = []
     for y in range(H):
         for x in range(W):
             fx, fy = x + 0.5, y + 0.5
             d = _rounded_rect_distance(fx, fy, W, H, RADIUS)
             alpha = _clamp(0.5 - d)
-            if platinum:
+            if special:
                 t = (fx + fy) / (W + H)
-                edge = [PLATINUM[i] + (GOLD[i] - PLATINUM[i]) * t for i in range(3)]
+                edge = [a_col[i] + (b_col[i] - a_col[i]) * t for i in range(3)]
                 inner = _clamp(0.5 - (d + 2.0))
                 glow = max(0.0, 1 - math.hypot(fx - H / 2, fy - H / 2) / 110) * 0.22
-                fill = [PANEL[i] + (GOLD[i] - PANEL[i]) * glow for i in range(3)]
+                fill = [PANEL[i] + (b_col[i] - PANEL[i]) * glow for i in range(3)]
                 col = [edge[i] + (fill[i] - edge[i]) * inner for i in range(3)]
             else:
                 inner = _clamp(0.5 - (d + 1.0))                # 1 px border of LINE
                 col = [LINE[i] + (PANEL[i] - LINE[i]) * inner for i in range(3)]
             disc = _clamp(0.5 - (math.hypot(fx - H / 2, fy - H / 2) - 34))   # the trophy's own circle
             if disc:
-                ring = GOLD if platinum else LINE
+                ring = b_col if special else LINE
                 inside = _clamp(0.5 - (math.hypot(fx - H / 2, fy - H / 2) - 33))
                 shade = [ring[i] + ((0x0E, 0x0F, 0x14)[i] - ring[i]) * inside for i in range(3)]
                 col = [col[i] + (shade[i] - col[i]) * disc for i in range(3)]
             px.append([col[0], col[1], col[2], alpha])
+    if not logo:
+        return px
     try:
         lw, lh, rgba = png_rgba(LOGO)
     except (OSError, ValueError, zlib.error):
@@ -222,6 +230,88 @@ class _Text:
         self.gdi32.DeleteDC(self.dc)
 
 
+def picture_rgba(path: str, size: int = ICON) -> bytes | None:
+    """Any picture Windows can read (JPEG, PNG...) scaled to size x size, as
+    RGBA rows, through GDI+ (part of Windows: no image library). None if not."""
+    try:
+        gdip = ctypes.WinDLL("gdiplus")
+    except OSError:
+        return None
+
+    class StartupInput(ctypes.Structure):
+        _fields_ = [("version", ctypes.c_uint32), ("callback", ctypes.c_void_p),
+                    ("no_thread", ctypes.c_int), ("no_codecs", ctypes.c_int)]
+
+    class Rect(ctypes.Structure):
+        _fields_ = [("x", ctypes.c_int), ("y", ctypes.c_int), ("w", ctypes.c_int), ("h", ctypes.c_int)]
+
+    class BitmapData(ctypes.Structure):
+        _fields_ = [("w", ctypes.c_uint), ("h", ctypes.c_uint), ("stride", ctypes.c_int), ("fmt", ctypes.c_int),
+                    ("scan0", ctypes.c_void_p), ("reserved", ctypes.c_void_p)]
+
+    P = ctypes.c_void_p
+    for name, args in (("GdiplusStartup", [ctypes.POINTER(ctypes.c_size_t), P, P]),
+                       ("GdiplusShutdown", [ctypes.c_size_t]),
+                       ("GdipCreateBitmapFromFile", [ctypes.c_wchar_p, ctypes.POINTER(P)]),
+                       ("GdipCreateBitmapFromScan0", [ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, P,
+                                                      ctypes.POINTER(P)]),
+                       ("GdipGetImageGraphicsContext", [P, ctypes.POINTER(P)]),
+                       ("GdipSetInterpolationMode", [P, ctypes.c_int]),
+                       ("GdipDrawImageRectI", [P, P, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int]),
+                       ("GdipBitmapLockBits", [P, ctypes.POINTER(Rect), ctypes.c_uint, ctypes.c_int,
+                                               ctypes.POINTER(BitmapData)]),
+                       ("GdipBitmapUnlockBits", [P, ctypes.POINTER(BitmapData)]),
+                       ("GdipDeleteGraphics", [P]), ("GdipDisposeImage", [P])):
+        fn = getattr(gdip, name)
+        fn.argtypes, fn.restype = args, ctypes.c_int
+    ARGB32 = 0x26200A
+    token, src, dst, g = ctypes.c_size_t(), P(), P(), P()
+    start = StartupInput(1, None, 0, 0)
+    if gdip.GdiplusStartup(ctypes.byref(token), ctypes.byref(start), None) != 0:
+        return None
+    try:
+        if gdip.GdipCreateBitmapFromFile(str(path), ctypes.byref(src)) != 0:
+            return None
+        if gdip.GdipCreateBitmapFromScan0(size, size, 0, ARGB32, None, ctypes.byref(dst)) != 0:
+            return None
+        gdip.GdipGetImageGraphicsContext(dst, ctypes.byref(g))
+        gdip.GdipSetInterpolationMode(g, 7)                       # high quality bicubic
+        gdip.GdipDrawImageRectI(g, src, 0, 0, size, size)
+        data = BitmapData()
+        if gdip.GdipBitmapLockBits(dst, ctypes.byref(Rect(0, 0, size, size)), 1, ARGB32, ctypes.byref(data)) != 0:
+            return None
+        try:
+            raw = ctypes.string_at(data.scan0, data.stride * size)
+        finally:
+            gdip.GdipBitmapUnlockBits(dst, ctypes.byref(data))
+        out = bytearray(size * size * 4)
+        for y in range(size):
+            row = raw[y * data.stride:y * data.stride + size * 4]
+            for x in range(size):
+                b, gr, r, a = row[x * 4:x * 4 + 4]                 # BGRA in memory
+                out[(y * size + x) * 4:(y * size + x) * 4 + 4] = bytes((r, gr, b, a))
+        return bytes(out)
+    finally:
+        for handle, free in ((g, gdip.GdipDeleteGraphics), (dst, gdip.GdipDisposeImage), (src, gdip.GdipDisposeImage)):
+            if handle:
+                free(handle)
+        gdip.GdiplusShutdown(token)
+
+
+def draw_picture(px: list, rgba: bytes, size: int = ICON) -> None:
+    """The achievement picture, clipped to a circle in the card's trophy slot."""
+    left = top = int(H / 2 - size / 2)
+    r = size / 2
+    for y in range(size):
+        for x in range(size):
+            inside = _clamp(0.5 - (math.hypot(x + 0.5 - r, y + 0.5 - r) - r))
+            red, green, blue, a = rgba[(y * size + x) * 4:(y * size + x) * 4 + 4]
+            k = inside * a / 255.0
+            if k:
+                p = px[(top + y) * W + left + x]
+                p[0], p[1], p[2] = p[0] + (red - p[0]) * k, p[1] + (green - p[1]) * k, p[2] + (blue - p[2]) * k
+
+
 def _fit(text: str, limit: int) -> str:
     text = " ".join(str(text).split())
     return text if len(text) <= limit else text[:limit - 1].rstrip() + "…"
@@ -268,9 +358,14 @@ def show(cards: list[dict], sound: bool = True, play=None) -> None:
     try:
         for c in cards:
             plat = bool(c.get("platinum"))
-            if plat not in bases:
-                bases[plat] = card_pixels(plat)
-            px = [p[:] for p in bases[plat]]
+            style = "platinum" if plat else "rare" if "rare" in c else "plain"
+            picture = picture_rgba(c["icon"]) if c.get("icon") and not plat else None
+            key = (style, picture is None)
+            if key not in bases:
+                bases[key] = card_pixels(style, logo=picture is None)
+            px = [p[:] for p in bases[key]]
+            if picture:
+                draw_picture(px, picture)
             if plat:
                 text.draw(px, "PLATINUM", 13, 31, 12, 700, "Segoe UI", GOLD)
                 text.draw(px, _fit(c.get("game") or "", 60), 32, 56, 17, 600, "Segoe UI", TEXT)
@@ -278,7 +373,10 @@ def show(cards: list[dict], sound: bool = True, play=None) -> None:
             else:
                 points = f" · {c['points']} pts" if c.get("points") else ""
                 top = 13 if c.get("game") else 22
-                text.draw(px, "Achievement unlocked" + points, top, top + 18, 12, 400, "Segoe UI", MUTED)
+                label = (f"Rare achievement \u00b7 {c['rare']:g}% of players" if "rare" in c
+                         else "Achievement unlocked" + points)
+                text.draw(px, label, top, top + 18, 12, 600 if "rare" in c else 400, "Segoe UI",
+                          SILVER_LIGHT if "rare" in c else MUTED)
                 text.draw(px, _fit(c.get("name") or "Achievement", 60), top + 19, top + 43, 17, 600, "Segoe UI", TEXT)
                 if c.get("game"):
                     text.draw(px, _fit(c["game"], 50), 56, 75, 12, 400, "Segoe UI", MUTED)
@@ -287,7 +385,7 @@ def show(cards: list[dict], sound: bool = True, play=None) -> None:
                 out[i * 4:i * 4 + 4] = bytes((int(b * a), int(g * a), int(r * a), int(a * 255)))
             ctypes.memmove(bits, bytes(out), len(out))
             if sound and play:
-                play(plat)
+                play("platinum" if plat else "rare" if "rare" in c else "unlock")
             for step in range(13):                               # slide up and fade in
                 p = 1 - (1 - step / 12) ** 3
                 frame(final_y + int(26 * (1 - p)), 0.96 * p)

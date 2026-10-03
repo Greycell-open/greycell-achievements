@@ -127,9 +127,13 @@ All five accounts sit under **Link accounts** at the top of the dashboard.
 by writing its save file; the app picks the save up and the achievement pops,
 like any game. The fifth level completes it and brings the Platinum popup.
 `testgame reset` takes the unlocks back to test again; `testgame remove` takes
-the test game out of your library. Choose the unlock and Platinum sounds under
-**Sounds** in the dashboard (eight unlock sounds, four Platinum ones, or your
-own WAV file).
+the test game out of your library. Choose the unlock, rare and Platinum sounds
+under **Settings, Sounds** in the dashboard, or use your own WAV file.
+
+A rare achievement, one that fewer than 1% of players have (5% or 10% if you
+prefer), gets a silver popup that says how rare it is, and its own sound.
+Rarity comes from Steam's public unlock percentages and from RetroAchievements,
+kept on your PC and refreshed weekly. Popups show the achievement's own picture.
 
 ### Running it on Windows
 

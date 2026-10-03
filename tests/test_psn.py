@@ -163,11 +163,13 @@ def test_disconnect_deletes_the_session_and_keeps_the_trophies(profile, vault):
     assert any(g["game_id"] == "psn-npwr20001_00" for g in profile.library()["games"])
 
 
-def test_playstation_unlocks_sync_quietly_like_steam(profile):
+def test_playstation_trophies_never_pop_up_on_the_pc(profile):
+    """Owner, 2026-10-03: trophies are earned on the console; a PC popup would
+    come minutes late on the wrong screen, even with platform popups on."""
     unlocked = sync(connected(profile, FakePsn()))
     fresh = dict(unlocked[0], occurred_at=notify.datetime.now(notify.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z"))
     assert not notify.wanted(fresh, notify.DEFAULTS)
-    assert notify.wanted(fresh, {**notify.DEFAULTS, "steam": True})
+    assert not notify.wanted(fresh, {**notify.DEFAULTS, "steam": True})
 
 
 def test_the_local_app_connects_reports_and_disconnects(profile, monkeypatch):

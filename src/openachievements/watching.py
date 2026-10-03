@@ -52,6 +52,8 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
                 retroachievements.RaWatcher(profile)]
     lists = cat.PackFetcher(profile)
     last_lists = 0.0
+    from . import rarity
+    rare = rarity.RarityCrawler(profile)              # Steam's unlock percentages, one game at a time
     if steam_local.linked(profile):
         say("Following Steam on this computer: new achievements appear as Steam records them.")
     if detector.enabled():
@@ -86,6 +88,10 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
                 complain(exc)
             for problem in getattr(w, "new_problems", lambda: [])():
                 complain(problem)
+        try:
+            rare.poll()
+        except Exception as exc:  # noqa: BLE001 - rarity is a nicety; keep watching
+            complain(exc)
         try:
             playing = {gid for gid in detector.known.values() if gid}
             playing |= {i["game_id"] for i in executable.local_installations(profile)

@@ -37,7 +37,7 @@ def chime_wav(kind: str = "unlock", name: str | None = None) -> bytes:
 def _chime_file(kind: str = "unlock", name: str | None = None) -> Path:
     from . import sounds
     name = sounds.known(kind, name)
-    path = Path(tempfile.gettempdir()) / f"greycell-achievements-{kind}-{name}-v10.wav"
+    path = Path(tempfile.gettempdir()) / f"greycell-achievements-{kind}-{name}-v11.wav"
     if not path.exists():
         tmp = path.with_suffix(f".{os.getpid()}.tmp")
         tmp.write_bytes(chime_wav(kind, name))
@@ -45,12 +45,12 @@ def _chime_file(kind: str = "unlock", name: str | None = None) -> Path:
     return path
 
 
-def _play_chime(platinum: bool = False, name: str | None = None, file: str | None = None) -> None:
+def _play_chime(platinum: bool = False, name: str | None = None, file: str | None = None, kind: str | None = None) -> None:
     """The chosen sound, or the player's own WAV when `name` is "custom"."""
     try:
         import winsound
         path = file if name == "custom" and file and Path(file).exists() else \
-            _chime_file("platinum" if platinum else "unlock", None if name == "custom" else name)
+            _chime_file(kind or ("platinum" if platinum else "unlock"), None if name == "custom" else name)
         winsound.PlaySound(str(path),
                            winsound.SND_FILENAME | winsound.SND_ASYNC | winsound.SND_NODEFAULT)
     except Exception:  # noqa: BLE001 - no sound is better than no popup
@@ -122,9 +122,12 @@ def _fit(text: str, limit: int) -> str:
 def show(cards: list[dict], sound: bool = True, choice: dict | None = None) -> None:
     choice = choice or {}
 
-    def play(platinum: bool = False) -> None:
-        kind = "platinum" if platinum else "unlock"
-        _play_chime(platinum, choice.get(kind), choice.get(f"{kind}_file"))
+    def play(which=False) -> None:                 # a card's kind: "unlock", "rare" or "platinum" (True: platinum)
+        kind = which if isinstance(which, str) else ("platinum" if which else "unlock")
+        if kind == "rare":
+            _play_chime(False, choice.get("rare"), choice.get("rare_file"), kind="rare")
+        else:
+            _play_chime(kind == "platinum", choice.get(kind), choice.get(f"{kind}_file"))
     if sys.platform == "win32":
         from . import overlay                    # never takes focus; Tk activates its windows
         overlay.show(cards, sound=sound, play=play)
@@ -201,7 +204,7 @@ def show(cards: list[dict], sound: bool = True, choice: dict | None = None) -> N
             _click_through(root)
         root.update_idletasks()
         if sound:
-            play(bool(c.get("platinum")))
+            play("platinum" if c.get("platinum") else "rare" if "rare" in c else "unlock")
         slide_in()
 
     root.after(0, next_card)

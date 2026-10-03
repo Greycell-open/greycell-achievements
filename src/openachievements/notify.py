@@ -18,14 +18,17 @@ import json
 import os
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Callable
 
 RECENT_SECONDS = 120
 PLATFORMS = ("steam", "psn", "xbox", "gog", "retroachievements")   # they show their own popups
 MAX_PER_ROUND = 10
-DEFAULTS = {"enabled": True, "steam": False, "sound": True, "unlock_sound": "pop", "platinum_sound": "burst"}
-SOUND_KEYS = {"unlock_sound": "unlock", "platinum_sound": "platinum"}
+DEFAULTS = {"enabled": True, "steam": False, "sound": True, "unlock_sound": "echo", "platinum_sound": "burst",
+            "rare_sound": "rare-echo", "rare_below": 1.0}
+SOUND_KEYS = {"unlock_sound": "unlock", "platinum_sound": "platinum", "rare_sound": "rare"}
+RARE_CHOICES = (1.0, 5.0, 10.0)     # "rare" means fewer than this share of Steam players have it
 
 
 def settings(config: dict) -> dict:
@@ -43,9 +46,17 @@ def change(profile, **values) -> dict:
         from . import sounds
         for k, v in values.items():
             if k in SOUND_KEYS:
-                table = sounds.PLATINUM if SOUND_KEYS[k] == "platinum" else sounds.UNLOCK
+                table = sounds.TABLES[SOUND_KEYS[k]][0]()
                 if v not in table and v != sounds.CUSTOM:
                     raise ValueError(f"{k} must be one of {', '.join(table)}")
+                current[k] = v
+            elif k == "rare_below":
+                try:
+                    v = float(v)
+                except (TypeError, ValueError):
+                    v = None
+                if v not in RARE_CHOICES:
+                    raise ValueError(f"rare_below must be one of {', '.join(f'{c:g}' for c in RARE_CHOICES)}")
                 current[k] = v
             elif k in DEFAULTS:
                 current[k] = bool(v)
@@ -70,6 +81,8 @@ def skipped_because(event: dict, prefs: dict, now: datetime | None = None) -> st
         return "popups are turned off"
     # Steam, PlayStation and Xbox show their own popups: their unlocks sync quietly unless asked.
     adapter = event.get("source", {}).get("adapter")
+    if adapter == "psn":
+        return "PlayStation trophies are earned on the console"     # a popup here would arrive late, on the wrong screen
     if adapter in PLATFORMS and not prefs["steam"]:
         return f"{adapter} shows its own popup"
     age = _age(event.get("occurred_at", ""), now or datetime.now(timezone.utc))
@@ -109,15 +122,55 @@ def platinum_cards(profile, events: list[dict], prefs: dict, now: datetime) -> l
             if gid in games and games[gid]["total"] and games[gid]["unlocked"] == games[gid]["total"]]
 
 
-def card(profile, event: dict) -> dict:
-    """What the popup says: the achievement and its game, never more."""
+PICTURE_WAIT = 3.0                  # the longest pictures may hold a popup, for all its cards together
+
+
+def add_pictures(cards: list[dict], urls: list[str | None], wait: float = PICTURE_WAIT, cached=None) -> None:
+    """Give each card its achievement's picture as a local file: from the
+    picture cache, fetched together if needed, all within one `wait`. A card
+    whose picture is not there in time shows the trophy instead."""
+    import threading
+    from . import art
+    get = cached or art.cached
+    found: dict[int, str] = {}
+
+    def one(i: int, url: str) -> None:
+        try:
+            path = get(url)
+        except Exception:  # noqa: BLE001 - no picture is never a reason to lose the popup
+            path = None
+        if path:
+            found[i] = str(path)
+    workers = [threading.Thread(target=one, args=(i, u), daemon=True) for i, u in enumerate(urls) if u]
+    for w in workers:
+        w.start()
+    deadline = time.monotonic() + wait
+    for w in workers:
+        w.join(max(0.0, deadline - time.monotonic()))
+    for i, path in list(found.items()):
+        cards[i]["icon"] = path
+
+
+def card(profile, event: dict, prefs: dict | None = None, rarity_of=None) -> dict:
+    """What the popup says: the achievement and its game, and that it is rare
+    when fewer than prefs["rare_below"] percent of Steam players have it."""
     state = profile.state()
     pack_id, _, ach_id = (event.get("achievement_id") or "").partition(":")
     definition = (state["packs"].get(pack_id) or {}).get("achievements", {}).get(ach_id, {})
     game = state["games"].get(event.get("game_id") or "", {})
-    return {"name": definition.get("name") or ach_id or "Achievement",
-            "game": game.get("title") or event.get("game_id") or "",
-            "points": definition.get("points") or 0}
+    name = definition.get("name") or ach_id or "Achievement"
+    out = {"name": name, "game": game.get("title") or event.get("game_id") or "", "points": definition.get("points") or 0}
+    if prefs is not None and definition.get("icon"):
+        out["_picture"] = definition["icon"]        # fetched for all cards at once, in flush
+    if prefs is not None:
+        from . import rarity
+        try:
+            pct = (rarity_of or rarity.for_unlock)(event.get("game_id") or "", name)
+        except Exception:  # noqa: BLE001 - no rarity is never a reason to lose the popup
+            pct = None
+        if pct is not None and pct < float(prefs.get("rare_below", DEFAULTS["rare_below"])):
+            out["rare"] = pct
+    return out
 
 
 def _launch(cards: list[dict], sound) -> None:
@@ -136,7 +189,8 @@ def _launch(cards: list[dict], sound) -> None:
     # sound: True/False, or {"on": bool, "unlock": name, "platinum": name} with the chosen sounds
     choice = sound if isinstance(sound, dict) else {"on": bool(sound)}
     proc.stdin.write(json.dumps({"cards": cards, "sound": bool(choice.get("on")),
-                                 "sounds": {k: choice[k] for k in ("unlock", "platinum", "unlock_file", "platinum_file")
+                                 "sounds": {k: choice[k] for k in ("unlock", "platinum", "rare", "unlock_file",
+                                                                   "platinum_file", "rare_file")
                                             if k in choice}}).encode("utf-8"))
     proc.stdin.close()
 
@@ -166,18 +220,20 @@ class Notifier:
             if reason is None and len(cards) >= MAX_PER_ROUND:
                 reason = f"more than {MAX_PER_ROUND} in one round"
             if reason is None:
-                cards.append(card(self.profile, e))
+                cards.append(card(self.profile, e, prefs))
             elif e.get("source", {}).get("adapter") not in PLATFORMS:
                 # Local signals (saves, play sessions) always say why; platform
                 # imports bring thousands of old unlocks and would flood the log.
                 print(f"popup: no popup for {e.get('achievement_id')}: {reason}")
+        add_pictures(cards, [c.pop("_picture", None) for c in cards])
         cards += platinum_cards(self.profile, events, prefs, now)
         if cards:
-            names = ", ".join(f"{c['name']} ({c['game']})" for c in cards)
+            names = ", ".join(f"{c['name']} ({c['game']})" + (f" rare, {c['rare']:g}%" if "rare" in c else "") for c in cards)
             try:
                 self._launch(cards, {"on": prefs["sound"], "unlock": prefs["unlock_sound"],
-                                     "platinum": prefs["platinum_sound"],
-                                     **{f"{kind}_file": str(custom_file(self.profile, kind)) for kind in ("unlock", "platinum")
+                                     "platinum": prefs["platinum_sound"], "rare": prefs["rare_sound"],
+                                     **{f"{kind}_file": str(custom_file(self.profile, kind))
+                                        for kind in ("unlock", "platinum", "rare")
                                         if prefs[f"{kind}_sound"] == "custom" and custom_file(self.profile, kind).exists()}})
             except Exception as exc:
                 print(f"popup: could not start the popup for {names}: {exc!r}")

@@ -82,7 +82,7 @@ def test_the_sounds_dialog_reads_changes_and_previews_choices(profile, monkeypat
     local = TestClient(create_local_app(profile, token="t" * 32), base_url="http://127.0.0.1:8788")
     h = {"X-OA-Token": "t" * 32}
     s = local.get("/v1/local/notify").json()
-    assert (s["unlock_sound"], s["platinum_sound"]) == ("pop", "burst")
+    assert (s["unlock_sound"], s["platinum_sound"]) == ("echo", "burst")
     assert [c["id"] for c in s["choices"]["platinum"]] == ["burst", "flurry", "parade", "rocket", "custom"]
     assert local.post("/v1/local/notify", json={"platinum_sound": "flurry"}).status_code == 403      # token needed
     assert local.post("/v1/local/notify", headers=h, json={"platinum_sound": "flurry", "steam": True}).json()["platinum_sound"] == "flurry"
@@ -104,7 +104,7 @@ def test_a_players_own_wav_can_be_the_sound_and_bad_files_are_refused(profile, m
     wav = toast.chime_wav("unlock", "pop-duo")
     r = local.post("/v1/local/notify/custom/platinum", headers=h, content=wav).json()
     assert r["platinum_sound"] == "custom" and notify.custom_file(profile, "platinum").read_bytes() == wav
-    assert local.get("/v1/local/notify").json()["custom"] == {"unlock": False, "platinum": True}
+    assert local.get("/v1/local/notify").json()["custom"] == {"unlock": False, "platinum": True, "rare": False}
     shown = []
     n = notify.Notifier(profile, launch=lambda cards, sound: shown.append(sound))
     sent = n._launch                                                  # what the popup process would be told

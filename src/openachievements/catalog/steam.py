@@ -218,8 +218,6 @@ def build_pack(appid: int, title: str, rows: list[dict], *, crawled_at: str, pre
                 "hidden": bool(hidden)}
         if icon.startswith("https://"):
             item["icon"] = icon[:300]
-        if row.get("percent"):
-            item["rarity"] = f"{row['percent']}% of players"
         achievements.append(item)
     game_id = f"steam-{appid}"
     meta = {
@@ -231,6 +229,14 @@ def build_pack(appid: int, title: str, rows: list[dict], *, crawled_at: str, pre
     }
     validate_definitions(meta, achievements)
     return {"appid": appid, "crawled_at": crawled_at, "pack": meta, "achievements": achievements}
+
+
+def without_rarity(achievements: list[dict]) -> list[dict]:
+    """Achievements as they go into a pack event: without Steam's unlock
+    percentage, which changes over time and lives in the rarity cache on this
+    computer (rarity.py), never in history. Catalogue files crawled before
+    this still carry it, so it is dropped here, where packs become events."""
+    return [{k: v for k, v in a.items() if k != "rarity"} for a in achievements]
 
 
 def fetch_schema(appid: int, fetch: Fetch) -> list[dict] | None:
@@ -569,7 +575,7 @@ def install_entry(profile, entry: dict, kind: str = "pack.installed") -> None:
         events.append(ev.make_event("game.registered", profile_id=profile.profile_id, device_id=profile.device_id,
                                     game_id=game["id"], payload={"title": game["title"], "platform": game["platform"],
                                                                  "external_ids": game["external_ids"]}))
-    description = validate_definitions(entry["pack"], entry["achievements"])
+    description = validate_definitions(entry["pack"], without_rarity(entry["achievements"]))
     events.extend(ev.make_event(kind, profile_id=profile.profile_id, device_id=profile.device_id, payload=payload)
                   for payload in split_for_events(description))
     profile.commit(events)

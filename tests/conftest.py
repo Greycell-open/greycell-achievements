@@ -24,6 +24,31 @@ def _private_credential_store():
     mp.undo()
 
 
+@pytest.fixture(autouse=True)
+def _no_rarity_network(tmp_path_factory):
+    """Rarity in tests: a scratch cache and no requests to Steam."""
+    from openachievements import rarity
+    mp = pytest.MonkeyPatch()
+    folder = tmp_path_factory.mktemp("rarity")
+    mp.setattr(rarity, "cache_dir", lambda: folder)
+
+    def offline(url):
+        raise OSError("tests never ask Steam")
+    mp.setattr(rarity, "_default_fetch", offline)
+    from openachievements import art                    # pictures too: a scratch cache, never the network
+    art_folder = tmp_path_factory.mktemp("art")
+    mp.setattr(art, "cache_dir", lambda: art_folder)
+    real_fetch = art._fetch
+
+    def no_network(url, open_url=None):                 # a test passing its own opener is not the network
+        if open_url is None:
+            raise OSError("tests never fetch pictures")
+        return real_fetch(url, open_url)
+    mp.setattr(art, "_fetch", no_network)
+    yield folder
+    mp.undo()
+
+
 @pytest.fixture
 def home(tmp_path):
     return tmp_path / "home"

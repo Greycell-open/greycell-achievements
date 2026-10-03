@@ -1,0 +1,5 @@
+Greycell Achievements 1.0.4
+- New default unlock sound, Echo, plus marimba and retro 8-bit versions.
+- Rare achievements: fewer than 1% of players (or 5%, 10%) get a silver popup with how rare they are, and their own sound.
+- Popups show the achievement's own picture.
+- PlayStation trophies no longer pop up on the PC (they are earned on the console).

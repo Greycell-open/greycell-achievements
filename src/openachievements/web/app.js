@@ -659,8 +659,13 @@
     $("soundBody").innerHTML =
       toggle("enabled", "Show a popup when I unlock something") +
       toggle("sound", "Play a sound with it") +
-      toggle("steam", "Popups for Steam, PlayStation and Xbox games too", "Off by default: they show their own, and their games sync quietly.") +
-      `<div class="sound-groups">${group("unlock", "unlock_sound", "Unlock sound")}${group("platinum", "platinum_sound", "Platinum sound")}</div>`;
+      toggle("steam", "Popups for Steam, Xbox, GOG and RetroAchievements too",
+        "Off by default: they show their own popups. Xbox PC games pop a minute or two late. PlayStation trophies are earned on the console, so they never pop up here.") +
+      `<label class="rare-below">Rare means fewer than <select data-setting="rare_below">` +
+        (s.rare_choices || [1, 5, 10]).map((v) => `<option value="${v}"${Number(s.rare_below) === v ? " selected" : ""}>${v}%</option>`).join("") +
+        `</select> of Steam players have it.</label>` +
+      `<div class="sound-groups">${group("unlock", "unlock_sound", "Unlock sound")}` +
+        `${group("rare", "rare_sound", "Rare achievement sound")}${group("platinum", "platinum_sound", "Platinum sound")}</div>`;
   }
 
   document.addEventListener("change", async (e) => {
@@ -682,7 +687,7 @@
       await api("v1/local/notify", { method: "POST", body: JSON.stringify({ [key]: value }) });
       if (e.target.type === "radio") {
         api("v1/local/notify/preview", { method: "POST",
-          body: JSON.stringify({ kind: key === "platinum_sound" ? "platinum" : "unlock", name: value }) }).catch(() => {});
+          body: JSON.stringify({ kind: { platinum_sound: "platinum", rare_sound: "rare" }[key] || "unlock", name: value }) }).catch(() => {});
       }
     } catch (err) { toast(err.message); renderSounds(); }
   });

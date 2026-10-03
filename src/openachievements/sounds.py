@@ -63,9 +63,9 @@ def _voice(buf: list, start: float, freq: float, dur: float, level: float, *, at
 
 # ---- the room, the filter, the level --------------------------------------------------
 
-def _room(dry: list, wet: float) -> list:
+def _room(dry: list, wet: float, tail: float | None = None) -> list:
     """A small Schroeder room: four combs, two all-passes, mixed in low."""
-    out = dry + [0.0] * int(TAIL * RATE)
+    out = dry + [0.0] * int((TAIL if tail is None else tail) * RATE)
     acc = [0.0] * len(out)
     for ms, fb in ((29.7, 0.72), (37.1, 0.70), (41.1, 0.68), (43.7, 0.66)):
         d = int(ms / 1000 * RATE)
@@ -85,8 +85,8 @@ def _room(dry: list, wet: float) -> list:
     return [out[i] + wet * 0.25 * acc[i] for i in range(len(out))]
 
 
-def _finish(buf: list, wet: float, peak: float) -> list:
-    buf = _room(buf, wet)
+def _finish(buf: list, wet: float, peak: float, tail: float | None = None) -> list:
+    buf = _room(buf, wet, tail)
     lp, smooth = 0.0, 0.55                                      # gentle low-pass, about 7 kHz
     for i, x in enumerate(buf):
         lp += smooth * (x - lp)
@@ -195,7 +195,110 @@ def _rocket(b):                                                 # a low rumble o
     return b, 0.22
 
 
+# Echo (owner's pick, 2026-10-03, after five rounds of previews built from
+# reward-sound research): a soft tick, a short climb (G4, C5) into a round,
+# Xbox-style tone gliding up into G5, then the same tone answering an octave
+# lower, twice, fading, in a wider room. Rising consonant steps, anticipation
+# then payoff then resolution; round tones only (no chimes).
+def _wide(b, t, f, level, dur, glide=0.05, decay=4.8, body=0.3):
+    _bubble(b, t, f, level, dur, bend=-0.35, bend_time=glide, decay=decay, tone=0.1)
+    if body:
+        _bubble(b, t, f / 2, level * body, dur * 0.8, bend=-0.35, bend_time=glide, decay=decay + 1.2, tone=0.04)
+
+
+def _echo(b):
+    _bubble(b, 0.0, 261.6, 0.16, 0.06, bend=-0.3, bend_time=0.008, decay=30.0, tone=0.1)   # the tick
+    _wide(b, 0.045, 392.0, 0.7, 0.16, glide=0.035)
+    _wide(b, 0.125, 523.3, 0.9, 0.3)
+    _wide(b, 0.235, 784.0, 1.0, 0.45, decay=3.5, body=0.4)                               # the landing
+    _wide(b, 0.475, 392.0, 0.38, 0.45, decay=4.0, body=0.0)                              # the low answer
+    _wide(b, 0.715, 392.0, 0.13, 0.4, decay=4.5, body=0.0)
+    return b, 0.75, 1.7
+
+
+# Two instruments besides the bubble (owner, 2026-10-03: "add marimba and
+# retro 8 bit"): the Echo motif on wood and on a softened 8-bit square. Still
+# no chimes and no bells; the same limits as the bubble (fundamental up to
+# 1.2 kHz, no attack under 3 ms). INSTRUMENT_SOUNDS names the only sounds not
+# made of bubbles; tests hold it to exactly these.
+INSTRUMENT_SOUNDS = frozenset({"echo-marimba", "echo-retro", "rare-marimba", "rare-retro"})
+
+
+def _place(buf: list, start: float, samples: list) -> None:
+    first = int(start * RATE)
+    if first + len(samples) > len(buf):
+        buf.extend([0.0] * (first + len(samples) - len(buf)))
+    for i, v in enumerate(samples):
+        buf[first + i] += v
+
+
+def _envelope(n: int, attack: float, decay: float, release: float = 0.04) -> list:
+    if attack < 0.003:
+        raise ValueError("too sharp for these sounds")
+    out = []
+    for i in range(n):
+        t = i / RATE
+        e = min(1.0, t / attack) * math.exp(-t * decay)
+        left = (n - i) / RATE
+        out.append(e * (left / release if left < release else 1.0))
+    return out
+
+
+def _marimba(f: float, dur: float, level: float) -> list:
+    """Wood: the note and its fourth partial (a marimba bar's tuning), the partial gone in a moment."""
+    if f > MAX_FUNDAMENTAL:
+        raise ValueError("too high for these sounds")
+    n = int(dur * RATE)
+    body, knock = _envelope(n, 0.003, 5.0), _envelope(n, 0.003, 28.0)
+    w = 2 * math.pi * f / RATE
+    return [level * (math.sin(w * i) * body[i] + 0.25 * math.sin(4 * w * i) * knock[i]) for i in range(n)]
+
+
+def _retro(f: float, dur: float, level: float) -> list:
+    """8-bit, softened: a square wave with its edges rounded off by a low-pass."""
+    if f > MAX_FUNDAMENTAL:
+        raise ValueError("too high for these sounds")
+    n, out, lp = int(dur * RATE), [], 0.0
+    e = _envelope(n, 0.004, 4.5)
+    w = 2 * math.pi * f / RATE
+    for i in range(n):
+        lp += 0.12 * ((1.0 if math.sin(w * i) >= 0 else -1.0) - lp)
+        out.append(level * 0.6 * lp * e[i])
+    return out
+
+
+ECHO_NOTES = ((0.0, 261.6, 0.06, 0.15), (0.045, 392.0, 0.18, 0.7), (0.125, 523.3, 0.32, 0.9),
+              (0.235, 784.0, 0.6, 1.0), (0.475, 392.0, 0.5, 0.38), (0.715, 392.0, 0.45, 0.13))
+# Rare (owner, 2026-10-03: "a special sound for rare achievements"): the Echo
+# climb taken one step further (round 4's "rare" idea the owner liked), landing
+# on C6, answered low twice, in a wider room.
+RARE_NOTES = ((0.0, 261.6, 0.06, 0.15), (0.045, 392.0, 0.16, 0.65), (0.12, 523.3, 0.2, 0.8),
+              (0.195, 784.0, 0.26, 0.9), (0.29, 1046.5, 0.6, 1.0), (0.56, 523.3, 0.5, 0.38), (0.83, 523.3, 0.45, 0.13))
+
+
+def _echo_on(instrument, notes=ECHO_NOTES, wet=0.75, tail=1.7):
+    def make(b):                                # the motif, note for note
+        for start, f, dur, level in notes:
+            _place(b, start, instrument(f, dur, level))
+        return b, wet, tail
+    return make
+
+
+def _rare_echo(b):
+    _bubble(b, 0.0, 261.6, 0.15, 0.06, bend=-0.3, bend_time=0.008, decay=30.0, tone=0.1)    # the tick
+    _wide(b, 0.045, 392.0, 0.65, 0.16, glide=0.035)
+    _wide(b, 0.12, 523.3, 0.8, 0.2, glide=0.04)
+    _wide(b, 0.195, 784.0, 0.9, 0.26)
+    _wide(b, 0.29, 1046.5, 1.0, 0.48, decay=3.2, body=0.45)                                  # the landing, a step past Echo
+    _wide(b, 0.56, 523.3, 0.38, 0.45, decay=4.0, body=0.0)                                   # the low answer
+    _wide(b, 0.83, 523.3, 0.13, 0.4, decay=4.5, body=0.0)
+    return b, 0.85, 2.0
+
+
 UNLOCK = {
+    "echo": ("Echo", _echo),
+    "echo-marimba": ("Echo, marimba", _echo_on(_marimba)),
+    "echo-retro": ("Echo, retro 8-bit", _echo_on(_retro)),
     "pop": ("Pop", _pop),
     "pop-duo": ("Pop Duo", _pop_duo),
     "bwoop": ("Bwoop", _bwoop),
@@ -203,34 +306,40 @@ UNLOCK = {
     "bright-pop": ("Bright Pop", _bright_pop),
     "chirp": ("Chirp", _chirp),
 }
+RARE = {
+    "rare-echo": ("Rare Echo", _rare_echo),
+    "rare-marimba": ("Rare Echo, marimba", _echo_on(_marimba, RARE_NOTES, 0.85, 2.0)),
+    "rare-retro": ("Rare Echo, retro 8-bit", _echo_on(_retro, RARE_NOTES, 0.85, 2.0)),
+}
 PLATINUM = {
     "burst": ("Burst", _burst),
     "flurry": ("Flurry", _flurry),
     "parade": ("Parade", _parade),
     "rocket": ("Rocket", _rocket),
 }
-DEFAULT_UNLOCK, DEFAULT_PLATINUM = "pop", "burst"
+DEFAULT_UNLOCK, DEFAULT_PLATINUM, DEFAULT_RARE = "echo", "burst", "rare-echo"
+TABLES = {"unlock": (lambda: UNLOCK, "echo"), "rare": (lambda: RARE, "rare-echo"), "platinum": (lambda: PLATINUM, "burst")}
 CUSTOM = "custom"                   # the player's own WAV file, kept on this computer only
 MAX_CUSTOM_BYTES = 4 * 1024 * 1024
 
 
 def choices() -> dict:
     custom = [{"id": CUSTOM, "name": "Custom (your own file)"}]
-    return {"unlock": [{"id": k, "name": v[0]} for k, v in UNLOCK.items()] + custom,
-            "platinum": [{"id": k, "name": v[0]} for k, v in PLATINUM.items()] + custom}
+    return {kind: [{"id": k, "name": v[0]} for k, v in get().items()] + custom for kind, (get, _d) in TABLES.items()}
 
 
 def known(kind: str, name: str | None) -> str:
     """The sound to use: the chosen one if it exists, else the default (so a
     choice saved before the sounds were replaced still plays something)."""
-    table, default = (PLATINUM, DEFAULT_PLATINUM) if kind == "platinum" else (UNLOCK, DEFAULT_UNLOCK)
-    return name if name in table else default
+    get, default = TABLES.get(kind, TABLES["unlock"])
+    return name if name in get() else default
 
 
 def samples(kind: str, name: str | None) -> list:
-    table = PLATINUM if kind == "platinum" else UNLOCK
-    buf, wet = table[known(kind, name)][1]([])
-    return _finish(buf, wet, PLATINUM_PEAK if kind == "platinum" else UNLOCK_PEAK)
+    table = TABLES.get(kind, TABLES["unlock"])[0]()
+    made = table[known(kind, name)][1]([])
+    buf, wet, tail = made if len(made) == 3 else (*made, None)     # a sound may ask for a longer room
+    return _finish(buf, wet, PLATINUM_PEAK if kind == "platinum" else UNLOCK_PEAK, tail)
 
 
 def wav(kind: str, name: str | None) -> bytes:

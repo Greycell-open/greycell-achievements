@@ -25,7 +25,7 @@ def test_a_fresh_unlock_pops_once_with_its_name_and_game(profile, tmp_path):
     n.add(unlock(profile, iso(3)))
     assert n.flush() == 1 and n.flush() == 0
     assert shown == [([{"name": "First step", "game": "Test Game", "points": 5}],
-                      {"on": True, "unlock": "pop", "platinum": "burst"})]
+                      {"on": True, "unlock": "echo", "platinum": "burst", "rare": "rare-echo"})]
 
 
 def test_history_and_steam_do_not_pop_unless_asked(profile, tmp_path):
@@ -59,12 +59,13 @@ def test_the_chime_is_a_short_quiet_wav():
     pcm = wav[44:]
     peak = max(abs(v) for (v,) in struct.iter_unpack("<h", pcm))
     from openachievements import sounds
-    assert len(pcm) / 2 / sounds.RATE < 1.6 and 0 < peak < 0.25 * 32767   # short (room tail included), well below full scale
+    assert len(pcm) / 2 / sounds.RATE < 3.0 and 0 < peak < 0.25 * 32767   # Echo's room tail included; well below full scale
 
 
 def test_every_sound_choice_is_short_enough_quiet_and_ends_in_silence():
     from openachievements import sounds
-    for kind, table, limit in (("unlock", sounds.UNLOCK, 1.6), ("platinum", sounds.PLATINUM, 4.2)):
+    # Unlock sounds may run to 3 s: Echo (owner's pick, 2026-10-03) fades out in a longer room.
+    for kind, table, limit in (("unlock", sounds.UNLOCK, 3.0), ("rare", sounds.RARE, 3.6), ("platinum", sounds.PLATINUM, 4.2)):
         for name in table:
             pcm = toast.chime_wav(kind, name)[44:]
             values = [v for (v,) in struct.iter_unpack("<h", pcm)]
@@ -99,7 +100,7 @@ def test_a_choice_of_a_sound_since_replaced_falls_back_to_the_default(profile):
     config["notify"] = {"unlock_sound": "chime", "platinum_sound": "arpeggio"}     # names from the old set
     profile.config.save(config)
     prefs = notify.settings(profile.config.load())
-    assert (prefs["unlock_sound"], prefs["platinum_sound"]) == ("pop", "burst")
+    assert (prefs["unlock_sound"], prefs["platinum_sound"]) == ("echo", "burst")
 
 
 def test_every_sound_is_only_bubbles_no_chimes(monkeypatch):
@@ -112,8 +113,11 @@ def test_every_sound_is_only_bubbles_no_chimes(monkeypatch):
         seen.append((dur, kw.get("bend", 0.0), kw.get("ratio", 1.0)))
         return real(buf, start, freq, dur, level, **kw)
     monkeypatch.setattr(sounds, "_voice", record)
-    for kind, table in (("unlock", sounds.UNLOCK), ("platinum", sounds.PLATINUM)):
+    assert sounds.INSTRUMENT_SOUNDS == {"echo-marimba", "echo-retro", "rare-marimba", "rare-retro"}   # owner-approved, 2026-10-03
+    for kind, table in (("unlock", sounds.UNLOCK), ("rare", sounds.RARE), ("platinum", sounds.PLATINUM)):
         for name in table:
+            if name in sounds.INSTRUMENT_SOUNDS:
+                continue
             seen.clear()
             sounds.samples(kind, name)
             assert seen, name
@@ -169,3 +173,18 @@ def test_log_lines_carry_the_time_and_process(tmp_path):
     lines = buf.getvalue().splitlines()
     assert len(lines) == 2 and lines[1].endswith("two still two")
     assert all(re.match(r"\d{4}-\d\d-\d\d \d\d:\d\d:\d\d \[" + str(os.getpid()) + r"\] ", l) for l in lines)
+
+
+def test_the_two_instruments_keep_the_bubbles_limits():
+    """Marimba and retro 8-bit (owner, 2026-10-03) obey the same ceiling and
+    soft attack as every other sound."""
+    from openachievements import sounds
+    for instrument in (sounds._marimba, sounds._retro):
+        with pytest.raises(ValueError):
+            instrument(1500.0, 0.2, 1.0)
+        assert instrument(784.0, 0.2, 1.0)
+    with pytest.raises(ValueError):
+        sounds._envelope(100, 0.001, 5.0)
+    for name in sounds.INSTRUMENT_SOUNDS:
+        kind = "rare" if name.startswith("rare-") else "unlock"
+        assert name in sounds.TABLES[kind][0]() and sounds.samples(kind, name)

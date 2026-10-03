@@ -90,6 +90,29 @@ def _get(d: dict, *names):
     return None
 
 
+def _keep_rarity(game_id: str, info: dict) -> None:
+    """RetroAchievements sends each achievement's award count and the game's
+    player count with the game: their ratio is its rarity, kept like Steam's."""
+    players = _get(info, "NumDistinctPlayers", "NumDistinctPlayersCasual", "numDistinctPlayers")
+    try:
+        players = int(players or 0)
+    except (TypeError, ValueError):
+        return
+    if players <= 0:
+        return
+    by_name = {}
+    for a in (_get(info, "Achievements", "achievements") or {}).values():
+        awarded = _get(a, "NumAwarded", "numAwarded")
+        if _get(a, "Title", "title") and isinstance(awarded, (int, float)):
+            by_name[_get(a, "Title", "title")] = 100.0 * awarded / players
+    if by_name:
+        from .. import rarity
+        try:
+            rarity.store(game_id, by_name)
+        except OSError:
+            pass                                          # rarity is a nicety; the sync goes on
+
+
 def plan_game(profile: Profile, state: dict, known: set, username: str, listing: dict,
               info: dict) -> tuple[list[dict], int]:
     """Events for one RA game (register it, install or update its set, the
@@ -102,6 +125,7 @@ def plan_game(profile: Profile, state: dict, known: set, username: str, listing:
                              external_account_id=username, **fields)
 
     out, already = [], 0
+    _keep_rarity(f"ra-{int(ra_id)}", info)
     stamp = str(_get(listing, "MostRecentAwardedDate", "mostRecentAwardedDate") or "")
     last = utc_iso(stamp)
     game_id = f"ra-{int(ra_id)}"
