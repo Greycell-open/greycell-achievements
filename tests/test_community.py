@@ -54,6 +54,26 @@ def test_the_last_unlock_of_a_game_also_counts_a_platinum(steam_game):
     assert [i["kind"] for i in queued(steam_game)] == ["unlock", "platinum"]
 
 
+def test_an_unlock_read_from_a_save_is_never_named_even_in_a_steam_game(steam_game):
+    community.from_round(steam_game, [unlock("steam-10", "a", 1, adapter="save-file")], now=NOW)
+    [item] = queued(steam_game)
+    assert item["platform"] == "pc" and "appid" not in item and "api" not in item
+
+
+def test_a_save_that_unlocks_many_at_once_is_an_import_not_a_moment(steam_game, monkeypatch):
+    from openachievements import notify
+    events = [unlock("steam-10", a, 1, adapter="save-file") for a in ("a", "b", "a", "b")]
+    assert notify.save_dumps(events) == {"steam-10"}
+    assert community.from_round(steam_game, events, now=NOW) == 0
+    shown = []
+    n = notify.Notifier(steam_game, launch=lambda cards, sound: shown.append(cards))
+    for e in events:
+        n.add({**e, "occurred_at": datetime.now(timezone.utc).isoformat()})
+    assert n.flush() == 0 and shown == []                                     # and no popup either
+    few = [unlock("steam-10", "a", 1, adapter="save-file")] * notify.SAVE_DUMP
+    assert notify.save_dumps(few) == set()                                     # a chapter's few still count
+
+
 def test_local_games_are_counted_without_any_name(profile):
     community.note(profile.config, "unlock", "pc")
     assert queued(profile)[0] == {"kind": "unlock", "platform": "pc", "at": queued(profile)[0]["at"]}

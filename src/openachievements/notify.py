@@ -72,6 +72,20 @@ def _age(iso: str, now: datetime) -> float | None:
     return (now - when).total_seconds()
 
 
+SAVE_DUMP = 3                       # more save unlocks than this for one game in one round: a save dropped in
+
+
+def save_dumps(events: list[dict]) -> set:
+    """Games for which one round's save reading unlocked more than SAVE_DUMP
+    achievements at once: a save copied in from elsewhere (or a first read of
+    an old save), recorded like an import, with no popup and no stats."""
+    counts: dict = {}
+    for e in events:
+        if e.get("event_type") == "achievement.unlocked" and (e.get("source") or {}).get("adapter") == "save-file":
+            counts[e.get("game_id")] = counts.get(e.get("game_id"), 0) + 1
+    return {g for g, n in counts.items() if n > SAVE_DUMP}
+
+
 def skipped_because(event: dict, prefs: dict, now: datetime | None = None) -> str | None:
     """Why this unlock gets no popup, or None when it gets one. Written to
     app.log for every unlock, so a missing popup can be traced afterwards."""
@@ -232,11 +246,14 @@ class Notifier:
             return 0
         prefs = settings(self.profile.config.load())
         now = datetime.now(timezone.utc)
+        dumps = save_dumps(events)
         cards = []
         for e in events:
             if e.get("event_type") != "achievement.unlocked":
                 continue
             reason = skipped_because(e, prefs, now)
+            if reason is None and e.get("game_id") in dumps:
+                reason = f"more than {SAVE_DUMP} unlocks from one save at once: a save copied in, treated as an import"
             if reason is None and len(cards) >= MAX_PER_ROUND:
                 reason = f"more than {MAX_PER_ROUND} in one round"
             if reason is None:
@@ -249,7 +266,7 @@ class Notifier:
         offline = None if privacy.allowed(self.profile.config, "pictures") else \
             (lambda url: art.cached(url, online=False))     # pictures switched off: only what is already here
         add_pictures(cards, [c.pop("_picture", None) for c in cards], cached=offline)
-        cards += platinum_cards(self.profile, events, prefs, now)
+        cards += platinum_cards(self.profile, [e for e in events if e.get("game_id") not in dumps], prefs, now)
         if cards:
             names = ", ".join(f"{c['name']} ({c['game']})" + (f" rare, {c['rare']:g}%" if "rare" in c else "") for c in cards)
             try:

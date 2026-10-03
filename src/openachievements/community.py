@@ -16,7 +16,11 @@ the app id, the achievement's Steam name and, for a Platinum, the hours played:
 public Steam data that lets greycell.app show names it looks up itself. Never
 a player, an install id, an account, a path, or a game the player named.
 Imports of old progress never count: only unlocks that happened in the last
-hour, and only shelves the player chose in the app.
+hour, and only shelves the player chose in the app. Only unlocks a platform
+recorded (Steam, PlayStation, Xbox, GOG, RetroAchievements) are named: an
+unlock read from a save file or a play session cannot be verified, so it
+counts as an unnamed "other PC" unlock, and a save that unlocks many at once
+(notify.save_dumps) does not count at all (owner, 2026-10-03).
 
 Items wait in a small file in the settings folder and go out once an hour,
 in one request. Switched off, the waiting items are dropped and nothing is
@@ -110,30 +114,34 @@ def from_round(profile, events: list[dict], now: datetime | None = None) -> int:
     now = now or datetime.now(timezone.utc)
     if not privacy.allowed(profile.config, "stats"):
         return 0
+    from .notify import save_dumps
     state = profile.state()
-    fresh_games, queued = set(), 0
+    dumps = save_dumps(events)
+    fresh_games: dict = {}                               # game -> platform, a platform-recorded one first
+    queued = 0
     for e in events:
-        if e.get("event_type") != "achievement.unlocked":
+        if e.get("event_type") != "achievement.unlocked" or e.get("game_id") in dumps:
             continue
         age = _age(e.get("occurred_at", ""), now)
         if age is None or not -300 <= age <= FRESH:
             continue
         adapter = (e.get("source") or {}).get("adapter")
         game_id = e.get("game_id")
-        appid = steam_ref(game_id)
+        platform = PLATFORMS.get(adapter, "pc")                # recorded by a platform, or not verifiable
+        appid = steam_ref(game_id) if platform == "steam" else None
         pack_id, _, ach_id = (e.get("achievement_id") or "").partition(":")
         definition = ((state["packs"].get(pack_id) or {}).get("achievements") or {}).get(ach_id) or {}
-        platform = "steam" if appid else PLATFORMS.get(adapter, "pc")
-        queued += note(profile.config, "unlock", platform, appid=appid, api=definition.get("external_id"),
+        queued += note(profile.config, "unlock", platform, appid=appid,
+                       api=definition.get("external_id") if appid else None,
                        at=now - timedelta(seconds=max(0.0, age)))
-        if game_id:
-            fresh_games.add((game_id, platform))
+        if game_id and fresh_games.get(game_id) in (None, "pc"):
+            fresh_games[game_id] = platform
     if fresh_games:
         games = {g["game_id"]: g for g in profile.library()["games"]}
-        for game_id, platform in sorted(fresh_games):
+        for game_id, platform in sorted(fresh_games.items()):
             g = games.get(game_id)
             if g and g["total"] and g["unlocked"] == g["total"]:
-                appid = steam_ref(game_id)
+                appid = steam_ref(game_id) if platform == "steam" else None
                 minutes = (g.get("playtime_seconds") or 0) // 60 if appid else None
                 queued += note(profile.config, "platinum", platform, appid=appid, minutes=minutes or None)
     return queued
