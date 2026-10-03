@@ -15,12 +15,17 @@ Bodies sit in the mids (fundamentals 260 Hz to 1.2 kHz: small speakers drop
 the lows, and the highs tire the ear), a gentle low-pass softens the top, and
 every sound is normalised to the same modest loudness and ends in exact
 silence. Unlock sounds are short; Platinum sounds are longer and resolve.
+
+Some sounds are recordings in audio/ instead (Recorded): the owner chose them
+by ear from a new set; they follow the same rules (no chimes, modest loudness,
+exact-silence ending) and are played as they are.
 """
 from __future__ import annotations
 
 import math
 import random
 import struct
+from pathlib import Path
 
 RATE = 32000
 TAIL = 0.7                          # room tail added after the last note
@@ -295,6 +300,26 @@ def _rare_echo(b):
     return b, 0.85, 2.0
 
 
+class Recorded:
+    """A sound kept as a file in audio/ (owner's picks, 2026-10-03, chosen by
+    ear from a new set): 16-bit mono 32 kHz, already at its loudness and ending
+    in exact silence, so it is played as it is. RECORDED_SOUNDS names them."""
+
+    def __init__(self, file: str):
+        self.path = Path(__file__).resolve().parent / "audio" / file
+
+    def samples(self) -> list:
+        import wave
+        with wave.open(str(self.path)) as w:
+            if (w.getnchannels(), w.getsampwidth(), w.getframerate()) != (1, 2, RATE):
+                raise ValueError(f"{self.path.name} is not 16-bit mono {RATE} Hz")
+            raw = w.readframes(w.getnframes())
+        return [v / 32767 for (v,) in struct.iter_unpack("<h", raw)]
+
+
+RECORDED_SOUNDS = frozenset({"ki-flicker", "flash-rush", "ki-burst", "apex", "ki-ascension", "radiant-awaken",
+                             "ki-completion", "roar", "warp-step", "beam-roar"})
+
 UNLOCK = {
     "echo": ("Echo", _echo),
     "echo-marimba": ("Echo, marimba", _echo_on(_marimba)),
@@ -305,17 +330,27 @@ UNLOCK = {
     "deep-pop": ("Deep Pop", _deep_pop),
     "bright-pop": ("Bright Pop", _bright_pop),
     "chirp": ("Chirp", _chirp),
+    "ki-flicker": ("Ki Flicker", Recorded("ki-flicker.wav")),
+    "flash-rush": ("Flash Rush", Recorded("flash-rush.wav")),
+    "ki-burst": ("Ki Burst", Recorded("ki-burst.wav")),
 }
 RARE = {
     "rare-echo": ("Rare Echo", _rare_echo),
     "rare-marimba": ("Rare Echo, marimba", _echo_on(_marimba, RARE_NOTES, 0.85, 2.0)),
     "rare-retro": ("Rare Echo, retro 8-bit", _echo_on(_retro, RARE_NOTES, 0.85, 2.0)),
+    "apex": ("Apex", Recorded("apex.wav")),
+    "ki-ascension": ("Ki Ascension", Recorded("ki-ascension.wav")),
+    "radiant-awaken": ("Radiant Awaken", Recorded("radiant-awaken.wav")),
 }
 PLATINUM = {
     "burst": ("Burst", _burst),
     "flurry": ("Flurry", _flurry),
     "parade": ("Parade", _parade),
     "rocket": ("Rocket", _rocket),
+    "ki-completion": ("Ki Completion", Recorded("ki-completion.wav")),
+    "roar": ("Roar", Recorded("roar.wav")),
+    "warp-step": ("Warp Step", Recorded("warp-step.wav")),
+    "beam-roar": ("Beam Roar", Recorded("beam-roar.wav")),
 }
 DEFAULT_UNLOCK, DEFAULT_PLATINUM, DEFAULT_RARE = "echo", "burst", "rare-echo"
 TABLES = {"unlock": (lambda: UNLOCK, "echo"), "rare": (lambda: RARE, "rare-echo"), "platinum": (lambda: PLATINUM, "burst")}
@@ -337,7 +372,10 @@ def known(kind: str, name: str | None) -> str:
 
 def samples(kind: str, name: str | None) -> list:
     table = TABLES.get(kind, TABLES["unlock"])[0]()
-    made = table[known(kind, name)][1]([])
+    maker = table[known(kind, name)][1]
+    if isinstance(maker, Recorded):
+        return maker.samples()
+    made = maker([])
     buf, wet, tail = made if len(made) == 3 else (*made, None)     # a sound may ask for a longer room
     return _finish(buf, wet, PLATINUM_PEAK if kind == "platinum" else UNLOCK_PEAK, tail)
 

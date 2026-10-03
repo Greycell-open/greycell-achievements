@@ -65,7 +65,8 @@ def test_the_chime_is_a_short_quiet_wav():
 def test_every_sound_choice_is_short_enough_quiet_and_ends_in_silence():
     from openachievements import sounds
     # Unlock sounds may run to 3 s: Echo (owner's pick, 2026-10-03) fades out in a longer room.
-    for kind, table, limit in (("unlock", sounds.UNLOCK, 3.0), ("rare", sounds.RARE, 3.6), ("platinum", sounds.PLATINUM, 4.2)):
+    # Rare and Platinum may run longer: the owner chose Radiant Awaken (5.7 s) and Roar (6.1 s) by ear, 2026-10-03.
+    for kind, table, limit in (("unlock", sounds.UNLOCK, 3.0), ("rare", sounds.RARE, 6.0), ("platinum", sounds.PLATINUM, 6.5)):
         for name in table:
             pcm = toast.chime_wav(kind, name)[44:]
             values = [v for (v,) in struct.iter_unpack("<h", pcm)]
@@ -116,8 +117,8 @@ def test_every_sound_is_only_bubbles_no_chimes(monkeypatch):
     assert sounds.INSTRUMENT_SOUNDS == {"echo-marimba", "echo-retro", "rare-marimba", "rare-retro"}   # owner-approved, 2026-10-03
     for kind, table in (("unlock", sounds.UNLOCK), ("rare", sounds.RARE), ("platinum", sounds.PLATINUM)):
         for name in table:
-            if name in sounds.INSTRUMENT_SOUNDS:
-                continue
+            if name in sounds.INSTRUMENT_SOUNDS or name in sounds.RECORDED_SOUNDS:
+                continue                                       # recordings: test_recorded_sounds_follow_the_rules
             seen.clear()
             sounds.samples(kind, name)
             assert seen, name
@@ -188,3 +189,31 @@ def test_the_two_instruments_keep_the_bubbles_limits():
     for name in sounds.INSTRUMENT_SOUNDS:
         kind = "rare" if name.startswith("rare-") else "unlock"
         assert name in sounds.TABLES[kind][0]() and sounds.samples(kind, name)
+
+
+def test_recorded_sounds_follow_the_rules():
+    """The owner's recorded picks (2026-10-03, chosen by ear; no chimes): only
+    these ten, each a plain 16-bit mono 32 kHz WAV at the app's loudness that
+    ends in exact silence, with nothing in the file but its format and its
+    sound (no metadata naming whatever made it)."""
+    from openachievements import sounds
+    assert sounds.RECORDED_SOUNDS == {"ki-flicker", "flash-rush", "ki-burst", "apex", "ki-ascension",
+                                      "radiant-awaken", "ki-completion", "roar", "warp-step", "beam-roar"}
+    found = set()
+    for kind, table, peak in (("unlock", sounds.UNLOCK, 0.22), ("rare", sounds.RARE, 0.22),
+                              ("platinum", sounds.PLATINUM, 0.26)):
+        for name, (_label, maker) in table.items():
+            if not isinstance(maker, sounds.Recorded):
+                continue
+            found.add(name)
+            data = maker.path.read_bytes()
+            chunks, at = [], 12
+            while at + 8 <= len(data):
+                size = struct.unpack("<I", data[at + 4:at + 8])[0]
+                chunks.append(data[at:at + 4])
+                at += 8 + size + (size & 1)
+            assert chunks == [b"fmt ", b"data"], (name, chunks)
+            values = sounds.samples(kind, name)
+            assert 0 < max(map(abs, values)) <= peak + 0.005, (name, max(map(abs, values)))
+            assert max(map(abs, values[-40:])) == 0, name
+    assert found == sounds.RECORDED_SOUNDS

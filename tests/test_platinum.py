@@ -83,7 +83,8 @@ def test_the_sounds_dialog_reads_changes_and_previews_choices(profile, monkeypat
     h = {"X-OA-Token": "t" * 32}
     s = local.get("/v1/local/notify").json()
     assert (s["unlock_sound"], s["platinum_sound"]) == ("echo", "burst")
-    assert [c["id"] for c in s["choices"]["platinum"]] == ["burst", "flurry", "parade", "rocket", "custom"]
+    assert [c["id"] for c in s["choices"]["platinum"]] == ["burst", "flurry", "parade", "rocket", "ki-completion", "roar", "warp-step",
+                                                             "beam-roar", "custom"]
     assert local.post("/v1/local/notify", json={"platinum_sound": "flurry"}).status_code == 403      # token needed
     assert local.post("/v1/local/notify", headers=h, json={"platinum_sound": "flurry", "steam": True}).json()["platinum_sound"] == "flurry"
     assert local.post("/v1/local/notify", headers=h, json={"unlock_sound": "airhorn"}).status_code == 400

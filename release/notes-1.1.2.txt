@@ -1,0 +1,2 @@
+Greycell Achievements 1.1.2
+- Ten new sounds to choose from in Settings, Sounds: Ki Flicker, Flash Rush and Ki Burst for unlocks; Apex, Ki Ascension and Radiant Awaken for rare achievements; Ki Completion, Roar, Warp Step and Beam Roar for Platinum.
