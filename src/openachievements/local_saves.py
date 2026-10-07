@@ -13,6 +13,11 @@ class RestoreBody(BaseModel):
     snapshot: str | None = None
 
 
+class KeeperBody(BaseModel):
+    on: bool | None = None
+    folder: str | None = None              # "" goes back to the profile's own folder
+
+
 class RuleBody(BaseModel):
     achievement: str
     folder: str
@@ -31,11 +36,53 @@ def _running(profile, game_id: str) -> bool:
     return scan(profile, game_id)
 
 
+def _open_folder(path: Path) -> None:
+    """The folder in the file manager: Explorer on Windows (no console
+    window), the desktop's opener on Linux."""
+    import os
+    import sys
+    path.mkdir(parents=True, exist_ok=True)
+    if sys.platform == "win32":
+        os.startfile(str(path))                     # noqa: S606 (a folder, opened in Explorer)
+        return
+    import shutil
+    from . import linux_desktop
+    opener = shutil.which("xdg-open")
+    if not opener or not linux_desktop._spawn([opener, str(path)]):
+        raise OSError("no file manager to open it with")
+
+
 def add_routes(app, profile, check) -> None:
     from . import savekeeper, savelearn
 
     def fail(exc: Exception, code: int = 400):
         raise HTTPException(code, {"code": "bad_request", "message": str(exc)}) from None
+
+    @app.get("/v1/local/saves")
+    def saves_overview(x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        return savekeeper.overview(profile)
+
+    @app.post("/v1/local/saves")
+    def saves_change(body: KeeperBody, x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        if body.on is not None:
+            savekeeper.set_enabled(profile, body.on)
+        if body.folder is not None:
+            try:
+                savekeeper.move_to(profile, body.folder)
+            except (savekeeper.KeeperError, OSError) as exc:
+                fail(exc)
+        return savekeeper.overview(profile)
+
+    @app.post("/v1/local/saves/open")
+    def saves_open(x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        try:
+            _open_folder(savekeeper.keep_dir(profile))
+        except OSError as exc:
+            fail(exc)
+        return {"opened": True}
 
     @app.get("/v1/local/games/{game_id}/kept")
     def kept(game_id: str, x_oa_token: str | None = Header(default=None)):

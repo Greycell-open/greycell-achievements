@@ -309,3 +309,93 @@ def test_a_save_folder_inside_another_of_the_same_game_is_kept_once(profile, gam
                                             "pattern": "*.sav", "format": "gvas"}]))
     savefile.allow(profile, "oldsins-saves", "slot")                  # found by name, and declared by rules
     assert savekeeper.save_folders(profile)["oldsins"] == [game]
+
+
+# ---- where saves are kept: the Saves window, moving them, another computer ----------------
+
+def test_a_path_under_another_users_home_is_read_as_this_users(monkeypatch, tmp_path):
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "me"))
+    me = tmp_path / "me"
+    if os.name == "nt":
+        assert savekeeper.here(r"C:\Users\Old\AppData\LocalLow\Fireproof Studios\Old Sins") == \
+            me / "AppData" / "LocalLow" / "Fireproof Studios" / "Old Sins"
+        assert savekeeper.here("/home/old/.local/share/Game") == Path("/home/old/.local/share/Game")
+    else:
+        assert savekeeper.here("/home/old/.local/share/Game") == me / ".local" / "share" / "Game"
+    assert savekeeper.here(r"D:\Games\Saves") == Path(r"D:\Games\Saves")              # not a home: unchanged
+    assert savekeeper.here(str(me / "Saves")) == me / "Saves"
+    public = r"C:\Users\Public\Documents\Steam\RUNE\1361320"                 # everyone's, never rebased
+    assert savekeeper.here(public) == Path(public)
+
+
+def test_saves_kept_on_another_computer_come_back_under_this_users_home(profile, game, monkeypatch, tmp_path):
+    keeper = savekeeper.Keeper(profile)
+    write_save(game, {"level": 9})
+    snap = keeper.take("oldsins", game)
+    snap["folder"] = (r"C:\Users\Old\AppData\LocalLow\Studio\Old Sins" if os.name == "nt"   # as the other PC wrote it
+                      else "/home/old/AppData/LocalLow/Studio/Old Sins")
+    (keeper.root / "oldsins" / "snapshots" / f"{snap['id']}.json").write_text(json.dumps(snap))
+    (game / "slot.json").unlink()
+    game.rmdir()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path / "me"))
+    plan = keeper.restore("oldsins")
+    landed = tmp_path / "me" / "AppData" / "LocalLow" / "Studio" / "Old Sins" / "slot.json"
+    assert plan["folder"] == str(landed.parent) and json.loads(landed.read_text()) == {"level": 9}
+
+
+def test_moving_kept_saves_copies_them_and_leaves_the_players_own_files(profile, game, tmp_path):
+    write_save(game, {"level": 3})
+    savekeeper.Keeper(profile).take("oldsins", game)
+    old = savekeeper.keep_dir(profile)
+    synced = tmp_path / "OneDrive" / "Game saves"
+    synced.mkdir(parents=True)
+    (synced / "notes.txt").write_text("mine")                                       # the player's own file
+    assert savekeeper.move_to(profile, str(synced)) == synced
+    assert savekeeper.keep_dir(profile) == synced and not (old / "oldsins").exists()
+    assert savekeeper.Keeper(profile).snapshots("oldsins")[0]["files"]["slot.json"]
+    write_save(game, {"level": 4})                                                  # kept in the new place from now on
+    assert savekeeper.Keeper(profile).take("oldsins", game) and len(savekeeper.Keeper(profile).snapshots("oldsins")) == 2
+    savekeeper.move_to(profile, "")                                                 # back to the profile folder
+    assert savekeeper.keep_dir(profile) == old and len(savekeeper.Keeper(profile).snapshots("oldsins")) == 2
+    assert (synced / "notes.txt").read_text() == "mine" and not (synced / "oldsins").exists()
+    with pytest.raises(savekeeper.KeeperError):
+        savekeeper.move_to(profile, str(old / "inside"))
+    with pytest.raises(savekeeper.KeeperError):
+        savekeeper.move_to(profile, "relative/folder")
+
+
+def test_moving_into_a_folder_another_computer_filled_adds_to_it(profile, game, tmp_path):
+    write_save(game, {"level": 3})
+    savekeeper.Keeper(profile).take("oldsins", game)
+    synced = tmp_path / "Dropbox"
+    other = savekeeper.Keeper(profile, synced)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    write_save(elsewhere, {"level": 1})
+    other.take("townfall", elsewhere)                                               # the other PC's copies
+    savekeeper.move_to(profile, str(synced))
+    assert savekeeper.Keeper(profile).games() == ["oldsins", "townfall"]
+
+
+def test_the_saves_window_shows_where_and_what_and_moves_them(profile, game, monkeypatch, tmp_path):
+    from fastapi.testclient import TestClient
+    from openachievements import local_saves
+    from openachievements.local_app import create_local_app
+    client = TestClient(create_local_app(profile, token="t" * 32), base_url="http://127.0.0.1:8788")
+    auth = {"X-OA-Token": "t" * 32}
+    assert client.get("/v1/local/saves").status_code == 403
+    write_save(game, {"level": 2})
+    client.post("/v1/local/games/oldsins/keep", headers=auth)
+    s = client.get("/v1/local/saves", headers=auth).json()
+    assert s["on"] is True and s["default"] is True and s["folder"] == str(savekeeper.keep_dir(profile))
+    assert [(g["game_id"], g["copies"], g["present"]) for g in s["games"]] == [("oldsins", 1, True)]
+    assert s["stored"] > 0 and s["waiting"] == []
+    assert client.post("/v1/local/saves", headers=auth, json={"on": False}).json()["on"] is False
+    moved = client.post("/v1/local/saves", headers=auth, json={"folder": str(tmp_path / "Saves")}).json()
+    assert moved["folder"] == str(tmp_path / "Saves") and moved["default"] is False and moved["games"]
+    bad = client.post("/v1/local/saves", headers=auth, json={"folder": "nope"})
+    assert bad.status_code == 400 and "full path" in bad.json()["detail"]["message"]
+    opened = []
+    monkeypatch.setattr(local_saves, "_open_folder", lambda p: opened.append(p))
+    assert client.post("/v1/local/saves/open", headers=auth).json() == {"opened": True}
+    assert opened == [tmp_path / "Saves"]

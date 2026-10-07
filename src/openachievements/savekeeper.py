@@ -18,8 +18,12 @@ Nothing is written while the game runs, and a save deleted on purpose while
 the game stayed installed is not brought back. `restore` does the same on
 request, always keeping what it replaces first.
 
-Saves never leave this computer: backups are not events, are not synced and
-are left out of exports.
+Saves never leave this computer unless the player says so: backups are not
+events, are not synced and are left out of exports. The player may keep them
+in another folder instead (`move_to`), a drive with room or a folder their
+own cloud drive syncs; a computer pointed at a folder another one fills
+restores from it, with paths under the other user's home read as this one's
+(`here`).
 """
 from __future__ import annotations
 
@@ -27,6 +31,8 @@ import gzip
 import hashlib
 import json
 import os
+import re
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -50,8 +56,34 @@ class KeeperError(ValueError):
     pass
 
 
-def keep_dir(profile) -> Path:
+_LOCK = threading.RLock()              # a look at the save folders and a move never overlap
+_SHARED_HOMES = {"public", "default", "default user", "all users"}   # C:\Users\Public is everyone's
+_HOME = re.compile(r"^([A-Za-z]:[\\/]Users[\\/][^\\/]+|/home/[^/]+)(?=[\\/]|$)", re.IGNORECASE)
+
+
+def default_keep_dir(profile) -> Path:
     return Path(profile.folder) / "backups" / "saves"
+
+
+def keep_dir(profile) -> Path:
+    chosen = (profile.config.load().get("keeper_dir") or {}).get(profile.profile_id)
+    return Path(chosen) if chosen else default_keep_dir(profile)
+
+
+def here(folder: str) -> Path:
+    """A kept save folder as it is on this computer. One taken under another
+    user's home (a new PC, another user name, a synced keeper folder) is read
+    as the same place under this user's home; anything else is unchanged."""
+    home = str(Path.home())
+    if os.path.normcase(folder + os.sep).startswith(os.path.normcase(home.rstrip("\\/") + os.sep)):
+        return Path(folder)                                     # already this user's
+    m = _HOME.match(folder)
+    if m and m.group(1).startswith("/") != (os.name != "nt"):
+        return Path(folder)                                     # another system's path: nothing to map
+    if not m or re.split(r"[\\/]", m.group(1))[-1].lower() in _SHARED_HOMES:
+        return Path(folder)
+    rest = [p for p in re.split(r"[\\/]", folder[m.end():]) if p]
+    return Path(home).joinpath(*rest)
 
 
 def _iso(t: float) -> str:
@@ -123,7 +155,7 @@ class Keeper:
                 snap = json.loads(path.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 continue
-            if folder is None or os.path.normcase(snap.get("folder", "")) == os.path.normcase(str(folder)):
+            if folder is None or os.path.normcase(str(here(snap.get("folder", "")))) == os.path.normcase(str(folder)):
                 out.append(snap)
         return sorted(out, key=lambda s: (s.get("taken_at", ""), s.get("id", "")), reverse=True)
 
@@ -202,7 +234,7 @@ class Keeper:
         if not snaps:
             raise KeeperError(f"no kept saves for {game_id}" + (f" matching {snapshot_id}" if snapshot_id else ""))
         snap = snaps[0]
-        target = Path(folder or snap["folder"])
+        target = Path(folder) if folder else here(snap["folder"])
         current = scan(target) or {}
         actions = []
         for rel, f in sorted(snap["files"].items()):
@@ -251,6 +283,96 @@ def set_enabled(profile, on: bool) -> None:
         config.setdefault("keeper", {})[profile.profile_id] = on
 
 
+def _stored(path: Path) -> int:
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for name in files:
+            try:
+                total += os.path.getsize(os.path.join(root, name))
+            except OSError:
+                pass
+    return total
+
+
+def overview(profile) -> dict:
+    """Where saves are kept, how much room they take, and each game's copies."""
+    keeper = Keeper(profile)
+    known = save_folders(profile)
+    games = []
+    for game_id in keeper.games():
+        snaps = keeper.snapshots(game_id)
+        if not snaps:
+            continue
+        newest = snaps[0]
+        folder = (known.get(game_id) or [here(newest["folder"])])[0]
+        games.append({"game_id": game_id, "copies": len(snaps), "newest": newest["taken_at"],
+                      "size": sum(f["size"] for f in newest["files"].values()),
+                      "stored": _stored(keeper._game_dir(game_id)), "folder": str(folder),
+                      "present": bool(scan(folder))})
+    games.sort(key=lambda g: g["newest"], reverse=True)
+    kept = {g["game_id"] for g in games}
+    return {"on": enabled(profile), "folder": str(keeper.root), "default": str(keeper.root) == str(default_keep_dir(profile)),
+            "stored": sum(g["stored"] for g in games), "games": games,
+            "waiting": sorted(g for g in known if g not in kept)}
+
+
+def move_to(profile, dest: str | None) -> Path:
+    """Keep saves in another folder from now on; None goes back to the
+    profile's. Everything kept is copied there and checked byte for byte
+    before the old folder is removed. Copies already in the new folder (a
+    synced folder another computer fills) are added to, never replaced."""
+    old = keep_dir(profile)
+    new = Path(os.path.expandvars(os.path.expanduser(dest.strip()))) if dest and dest.strip() else default_keep_dir(profile)
+    if not new.is_absolute():
+        raise KeeperError("give the full path of a folder, like D:\\Game saves")
+    with _LOCK:
+        a, b = os.path.normcase(str(old.resolve())), os.path.normcase(str(new.resolve()))
+        if a == b:
+            return new
+        if b.startswith(a.rstrip("\\/") + os.sep) or a.startswith(b.rstrip("\\/") + os.sep):
+            raise KeeperError("pick a folder that is neither inside the current one nor holds it")
+        if new.exists() and not new.is_dir():
+            raise KeeperError(f"{new} is a file, not a folder")
+        try:
+            new.mkdir(parents=True, exist_ok=True)
+        except OSError as exc:
+            raise KeeperError(f"cannot make {new}: {exc.strerror or exc}") from None
+        # Only the keeper's own game folders move: a folder the player chose
+        # may hold other things of theirs, which are never copied or removed.
+        moved = []
+        for game in Keeper(profile, old).games():
+            for src in (old / game).rglob("*"):
+                if not src.is_file():
+                    continue
+                target = new / src.relative_to(old)
+                data = src.read_bytes()
+                if not target.exists():
+                    write_bytes_atomic(target, data)
+                elif target.read_bytes() != data:
+                    raise KeeperError(f"{target} already exists with other content; nothing was moved")
+                if target.read_bytes() != data:
+                    raise KeeperError(f"{target} did not arrive intact; nothing was moved")
+                moved.append(src)
+        with profile.config.editing() as config:
+            chosen = config.setdefault("keeper_dir", {})
+            if new == default_keep_dir(profile):
+                chosen.pop(profile.profile_id, None)
+            else:
+                chosen[profile.profile_id] = str(new)
+        for src in moved:
+            try:
+                src.unlink()
+            except OSError:
+                pass
+        for game in {src.relative_to(old).parts[0] for src in moved}:
+            for root, _dirs, _files in sorted(os.walk(old / game), key=lambda w: len(w[0]), reverse=True):
+                try:
+                    os.rmdir(root)                              # only empty ones
+                except OSError:
+                    pass
+        return new
+
+
 def save_folders(profile) -> dict[str, list[Path]]:
     """game id -> the save folders known for it on this computer: found by
     name (autodetect), or a pack's save folder this machine allowed."""
@@ -294,6 +416,10 @@ class KeeperWatcher:
         """Messages for the log about what was kept or restored."""
         if not enabled(self.profile):
             return []
+        with _LOCK:
+            return self._poll(playing, force)
+
+    def _poll(self, playing: set[str], force: bool) -> list[str]:
         now = self.clock()
         said = []
         for game_id in playing - self._was_running:          # just started: did it start with no saves?
@@ -332,7 +458,7 @@ class KeeperWatcher:
 
     def _empty(self, game_id: str) -> bool:
         snaps = self._keeper().snapshots(game_id)
-        return bool(snaps) and not scan(Path(snaps[0]["folder"]))
+        return bool(snaps) and not scan(here(snaps[0]["folder"]))
 
     def _put_back(self, keeper: Keeper, game_id: str, fresh_since: float | None = None) -> list[str]:
         """Restore the newest snapshot taken before the fresh start, keeping
@@ -341,7 +467,7 @@ class KeeperWatcher:
         if fresh_since is not None:
             cutoff = _iso(fresh_since)
             snaps = [s for s in snaps if s["taken_at"] < cutoff]
-            current = scan(Path(snaps[0]["folder"])) if snaps else None
+            current = scan(here(snaps[0]["folder"])) if snaps else None
             if current and min(m for _s, m in current.values()) < fresh_since:
                 return []                                    # some files predate this run: not a fresh start
         if not snaps:
@@ -350,10 +476,10 @@ class KeeperWatcher:
             keeper.restore(game_id, snaps[0]["id"])
         except (KeeperError, OSError) as exc:
             return [f"could not put {game_id} saves back: {exc}"]
-        self._stamps.pop(snaps[0]["folder"], None)
+        self._stamps.pop(str(here(snaps[0]["folder"])), None)
         with self.profile.config.editing() as config:
             config.setdefault("keeper_restored", {})[f"{self.profile.profile_id}:{game_id}"] = snaps[0]["id"]
-        return [f"put {game_id} saves back from {snaps[0]['taken_at']} into {snaps[0]['folder']}"]
+        return [f"put {game_id} saves back from {snaps[0]['taken_at']} into {here(snaps[0]['folder'])}"]
 
     def _reinstalled(self, keeper: Keeper, playing: set[str]) -> list[str]:
         """A game whose program is on disk again, created after its newest
@@ -372,7 +498,7 @@ class KeeperWatcher:
                 created = Path(inst["path"]).stat().st_ctime
             except OSError:
                 continue                                       # not installed now
-            if _iso(created) <= snaps[0]["taken_at"] or scan(Path(snaps[0]["folder"])):
+            if _iso(created) <= snaps[0]["taken_at"] or scan(here(snaps[0]["folder"])):
                 continue
             said += self._put_back(keeper, game_id)
         return said

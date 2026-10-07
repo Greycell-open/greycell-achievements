@@ -119,6 +119,7 @@
         `<div class="menu" id="settingsMenu" role="menu" hidden>` +
         `<button type="button" role="menuitem" data-act="checkupdates"><span>Check for updates</span></button>` +
         `<button type="button" role="menuitem" data-act="sounds"><span>Sounds</span></button>` +
+        `<button type="button" role="menuitem" data-act="keeper"><span>Saves</span></button>` +
         `<button type="button" role="menuitem" data-act="privacy"><span>Privacy</span></button>` +
         `<button type="button" role="menuitem" data-act="about"><span>About</span></button>` +
         (appControls.autostart !== null && appControls.autostart !== undefined
@@ -127,7 +128,7 @@
         (appControls.quit ? `<button type="button" role="menuitem" data-act="quitapp"><span>Quit Greycell Achievements</span></button>` : "") +
         `</div></div>`);
       bits.push(`<a class="pill" href="${ROADMAP}" target="_blank" rel="noreferrer noopener">Roadmap</a>`);
-      bits.push(`<span class="pill status">On this computer</span>`);
+      bits.push(`<button class="pill where" data-act="keeper" type="button" title="Where your achievements and saves are kept">On this computer</button>`);
       if (syncConnected) bits.push(`<button class="pill" data-act="sync" type="button">Sync</button>`);   // only with a sync server
     } else if (token) {
       bits.push(`<button class="pill" data-act="library" type="button">Library</button>`);
@@ -445,6 +446,61 @@
       const sg = saveView.suggestions[Number(t.dataset.savesuggest)];
       return addSaveRule({ achievement: sg.achievement_id, folder: sg.folder, file: sg.file, field: sg.field,
                            op: sg.op, value: sg.value, format: sg.format });
+    }
+  }
+
+  // ---- saves on this computer: where they are kept, every game's copies -------
+  const bytes = (n) => n < 1024 ? `${n} bytes` : n < 1048576 ? `${Math.round(n / 1024)} KB` : `${(n / 1048576).toFixed(1)} MB`;
+
+  async function renderKeeper(state) {
+    const s = state || await api("v1/local/saves");
+    const game = (id) => library && library.games.find((x) => x.game_id === id);
+    const n = s.games.length, waiting = s.waiting.length;
+    const rows = s.games.map((g) => {
+      const known = game(g.game_id);
+      return `<div class="save-row"><span><b>${esc(known ? known.title || g.game_id : g.game_id)}</b> ` +
+        `<span class="muted">${g.copies} ${g.copies === 1 ? "copy" : "copies"}, newest ${esc(since(g.newest))}, ` +
+        `${bytes(g.size)}${g.present ? "" : ", no saves on disk now: they come back when the game does"}</span></span>` +
+        (known ? `<button type="button" data-game="${esc(g.game_id)}">Open</button>` : "") + `</div>`;
+    }).join("");
+    $("keeperBody").innerHTML =
+      `<label class="toggle"><input type="checkbox" data-keeper="on"${s.on ? " checked" : ""}> Keep copies of my game saves</label>` +
+      `<p class="muted">A game's save folder is copied a few seconds after the game saves, never while it runs. ` +
+      `The newest 20 copies are kept, then one a day for 60 days. Copies stay on this computer.</p>` +
+      `<div class="saves-found"><div class="saves-head"><b>Kept in</b></div><div><code>${esc(s.folder)}</code></div>` +
+      `<div>${n} game${n === 1 ? "" : "s"}, ${bytes(s.stored)} on disk` +
+      (waiting ? `; ${waiting} more found, kept after ${waiting === 1 ? "its" : "their"} next save` : "") + `</div>` +
+      `<div class="row"><button type="button" data-keeper="open">Open folder</button></div>` +
+      `<div class="row keeper-move"><input id="keeperFolder" type="text" spellcheck="false" ` +
+      `placeholder="Another folder, like D:\\Game saves" aria-label="Folder to keep saves in">` +
+      `<button type="button" data-keeper="move">Move here</button>` +
+      (s.default ? "" : `<button type="button" data-keeper="default">Back to the profile folder</button>`) + `</div>` +
+      `<div>To have them on another PC as well, move them into a folder OneDrive, Dropbox or Google Drive syncs, ` +
+      `and choose that same folder here on the other PC.</div></div>` +
+      `<div class="saves-found"><div class="saves-head"><b>Games</b></div>` +
+      (rows ? `<div class="saves-more">${rows}</div>` : `<div>Nothing kept yet. Play a game and its saves appear here.</div>`) + `</div>` +
+      `<div class="saves-found"><div class="saves-head"><b>How saves come back</b></div>` +
+      `<div>Reinstalled a game: once its program is back and its save folder is empty, the newest copy is put back before you play.</div>` +
+      `<div>Played it before that and it made a new save: when you close the game, that new save is kept too, then your progress is put back.</div>` +
+      `<div>On a new PC, choose the same synced folder; saves kept under another Windows user name go to yours.</div>` +
+      `<div>Any time: open the game, then Restore. Whatever is there is kept first, so a restore can be undone.</div>` +
+      `<div>A save you delete while the game stays installed is not brought back.</div></div>`;
+  }
+
+  async function keeperAction(t) {
+    const what = t.dataset.keeper;
+    if (what === "open") return api("v1/local/saves/open", { method: "POST" });
+    if (what === "move" || what === "default") {
+      const folder = what === "default" ? "" : $("keeperFolder").value.trim();
+      if (what === "move" && !folder) return toast("Type the folder to keep saves in first.");
+      if (!confirm(what === "default" ? "Move the kept saves back into the profile folder?"
+        : `Move the kept saves to ${folder}? They are copied and checked before the old copies are removed.`)) return;
+      t.disabled = true;
+      try {
+        const s = await api("v1/local/saves", { method: "POST", body: JSON.stringify({ folder }) });
+        toast("Saves are kept in the new folder.");
+        return renderKeeper(s);
+      } finally { t.disabled = false; }
     }
   }
 
@@ -953,6 +1009,9 @@
       if (t.id === "closeSteam") return $("steamDialog").close();
       if (t.dataset.act === "sounds") { $("soundDialog").showModal(); return renderSounds(); }
       if (t.dataset.act === "privacy") { $("privacyDialog").showModal(); return renderPrivacy(); }
+      if (t.dataset.act === "keeper") { closeMenus(); $("keeperDialog").showModal(); return renderKeeper(); }
+      if (t.dataset.keeper) return await keeperAction(t);
+      if (t.id === "closeKeeper") return $("keeperDialog").close();
       if (t.id === "closePrivacy") return $("privacyDialog").close();
       if (t.id === "noticeOk") return $("noticeDialog").close();
       if (t.id === "noticeOff") {
@@ -1095,6 +1154,11 @@
     } catch (err) { toast(err.message); }
   });
   document.addEventListener("change", async (e) => {
+    if (e.target.dataset && e.target.dataset.keeper === "on") {
+      try {
+        return renderKeeper(await api("v1/local/saves", { method: "POST", body: JSON.stringify({ on: e.target.checked }) }));
+      } catch (err) { toast(err.message); return renderKeeper(); }
+    }
     if (e.target.dataset && e.target.dataset.privacy) {
       try {
         await api("v1/local/privacy", { method: "POST", body: JSON.stringify({ [e.target.dataset.privacy]: e.target.checked }) });

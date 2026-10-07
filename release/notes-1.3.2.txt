@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.2
+- A Saves window: open it from "On this computer" or Settings, Saves. It shows where your save copies are kept, each game's copies, and how they come back.
+- Move your save copies to any folder, such as one OneDrive or Dropbox syncs, and choose the same folder on another PC.
+- On a new PC, saves kept under another Windows user name are put back into yours.
