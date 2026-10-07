@@ -123,16 +123,15 @@ def test_a_kept_file_cannot_be_restored_outside_its_folder(profile, game):
     assert not (game.parent / "escape.json").exists()
 
 
-def test_old_snapshots_are_thinned_and_their_files_dropped(profile, game, monkeypatch):
-    monkeypatch.setattr(savekeeper, "RECENT", 3)
-    monkeypatch.setattr(savekeeper, "DAILY", 0)
+def test_every_kept_copy_stays_forever_and_a_repeated_file_is_stored_once(profile, game):
     keeper = savekeeper.Keeper(profile)
-    for n in range(6):
-        write_save(game, {"level": n})
+    for n in range(30):                                               # more than any old limit
+        write_save(game, {"level": n % 25})
         keeper.take("oldsins", game)
         time.sleep(0.002)
-    assert len(keeper.snapshots("oldsins")) == 3
-    assert len(list((keeper.root / "oldsins" / "blobs").glob("*/*.gz"))) == 3
+    assert len(keeper.snapshots("oldsins")) == 30
+    assert len(list((keeper.root / "oldsins" / "blobs").glob("*/*.gz"))) == 25    # levels 0-4 came back: no new file
+    assert not hasattr(keeper, "prune")
 
 
 def register_exe(profile, tmp_path):

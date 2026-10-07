@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.3
+- Kept saves never expire: every copy of a game's saves stays, so any of them can come back. A file that did not change is stored once.
+- Restore lists every kept copy, not only the newest 25.

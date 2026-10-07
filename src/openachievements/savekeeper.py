@@ -3,8 +3,10 @@
 Every game whose save folder is known (found by its name, or declared by a
 pack the player allowed) has that folder copied into the profile's
 `backups/saves/<game>/` whenever it changes, once the game has finished
-writing. Files are stored once by content (gzip), so fifty snapshots of a
-save that changes a little cost little more than one. The profile folder
+writing. Every copy is kept for good: only the player knows which of fifty
+saves they will want back, so none is ever thinned out. Files are stored
+once by content (gzip), so fifty snapshots of a save that changes a little
+cost little more than one. The profile folder
 belongs to the player and outlives any game: uninstalling a game, or a
 repack's uninstaller wiping its folder, loses nothing.
 
@@ -45,8 +47,6 @@ SETTLE = 10.0                          # a folder written in the last 10 s is st
 MAX_FILES = 2000
 MAX_FILE_BYTES = 256 * 1024 * 1024
 MAX_FOLDER_BYTES = 1024 * 1024 * 1024
-RECENT = 20                            # newest snapshots always kept, then one a day for DAILY days
-DAILY = 60
 _SKIP_SUFFIX = (".log", ".dmp", ".tmp", ".mdmp", ".etl")
 _SKIP_DIRS = ("crashes", "crash", "logs", "shadercache", "shadercaches", "webcache", "cache", "caches", "analytics",
               "unity", "crashdumps")
@@ -190,34 +190,7 @@ class Keeper:
         snap = {"id": f"{int(now * 1000)}-{_slug(str(folder))}", "game_id": game_id, "taken_at": _iso(now),
                 "folder": str(folder), "reason": reason, "files": listed}
         write_json_atomic(self._game_dir(game_id) / "snapshots" / f"{snap['id']}.json", snap)
-        self.prune(game_id)
         return snap
-
-    def prune(self, game_id: str) -> None:
-        """Keep the newest RECENT snapshots of each folder and one a day for
-        DAILY days; drop the rest and any file no snapshot needs."""
-        snaps = self.snapshots(game_id)
-        keep, days, per_folder = [], set(), {}
-        for s in snaps:
-            n = per_folder[s["folder"]] = per_folder.get(s["folder"], 0) + 1
-            day = (s["folder"], s["taken_at"][:10])
-            if n <= RECENT or (day not in days and len(days) < DAILY):
-                keep.append(s)
-                days.add(day)
-        dropped = [s for s in snaps if s not in keep]
-        for s in dropped:
-            try:
-                (self._game_dir(game_id) / "snapshots" / f"{s['id']}.json").unlink()
-            except OSError:
-                pass
-        if dropped:
-            needed = {f["sha256"] for s in keep for f in s["files"].values()}
-            for blob in (self._game_dir(game_id) / "blobs").glob("*/*.gz"):
-                if blob.name[:-3] not in needed:
-                    try:
-                        blob.unlink()
-                    except OSError:
-                        pass
 
     def read(self, game_id: str, sha: str) -> bytes:
         data = gzip.decompress(self._blob(game_id, sha).read_bytes())

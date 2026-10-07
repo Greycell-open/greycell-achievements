@@ -388,7 +388,7 @@
   function showRestoreList() {
     const k = saveView.kept;
     $("savesMore").innerHTML = `<b>Put saves back</b><div class="muted">What is there now is kept first. Close the game before.</div>` +
-      k.snapshots.slice(0, 25).map((sn) => `<div class="save-row"><span>${esc(fmtDate(sn.taken_at))} ` +
+      k.snapshots.map((sn) => `<div class="save-row"><span>${esc(fmtDate(sn.taken_at))} ` +
         `${esc(new Date(sn.taken_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))} ` +
         `<span class="muted">${sn.files} file${sn.files === 1 ? "" : "s"}, ` +
         `${sn.size < 1024 ? sn.size + " bytes" : sn.size < 1048576 ? Math.round(sn.size / 1024) + " KB" : (sn.size / 1048576).toFixed(1) + " MB"}` +
@@ -466,7 +466,8 @@
     $("keeperBody").innerHTML =
       `<label class="toggle"><input type="checkbox" data-keeper="on"${s.on ? " checked" : ""}> Keep copies of my game saves</label>` +
       `<p class="muted">A game's save folder is copied a few seconds after the game saves, never while it runs. ` +
-      `The newest 20 copies are kept, then one a day for 60 days. Copies stay on this computer.</p>` +
+      `Every copy is kept for good, so any of them can come back; a file that did not change is stored once. ` +
+      `Copies stay on this computer.</p>` +
       `<div class="saves-found"><div class="saves-head"><b>Kept in</b></div><div><code>${esc(s.folder)}</code></div>` +
       `<div>${n} game${n === 1 ? "" : "s"}, ${bytes(s.stored)} on disk` +
       (waiting ? `; ${waiting} more found, kept after ${waiting === 1 ? "its" : "their"} next save` : "") + `</div>` +
