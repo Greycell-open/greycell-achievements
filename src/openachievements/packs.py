@@ -53,7 +53,7 @@ KNOWN_SIGNALS = {
 # saves relative to a known folder, never as a free path, and how to read them.
 # No HOME: a pack names a game's folder, never a user's dotfiles or keys.
 SAVE_ROOTS = ("LOCALAPPDATA", "LOCALLOW", "APPDATA", "DOCUMENTS", "SAVED_GAMES")
-SAVE_FORMATS = ("json", "ini", "text", "gvas")
+SAVE_FORMATS = ("json", "ini", "text", "gvas", "fireproof", "nrbf", "es3")
 SAVE_OPS = ("==", "!=", ">=", "<=", ">", "<", "exists", "contains")
 
 
@@ -169,6 +169,8 @@ def validate_definitions(meta: dict, achievements: list) -> dict:
         for optional in ("category", "rarity", "icon"):
             if a.get(optional) is not None:
                 item[optional] = _text(a[optional], f"{where}.{optional}", limit=300)
+        if a.get("external_id") not in (None, ""):          # the platform's own id (Steam's internal name)
+            item["external_id"] = _text(str(a["external_id"]), f"{where}.external_id", limit=128)
         progress = a.get("progress")
         if progress is not None:
             target = progress.get("target") if isinstance(progress, dict) else None

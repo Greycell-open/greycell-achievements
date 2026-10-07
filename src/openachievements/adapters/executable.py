@@ -218,23 +218,29 @@ class Watcher:
         running = running_executables() if running is None else running
         now = time.monotonic() if now is None else now
         written: list[dict] = []
+        # One session per game: two of its programs running at once (the game
+        # and its crash reporter, or two copies) are one sitting, not two, and
+        # it ends only when none of them is running any more.
+        games: dict[str, list[dict]] = {}
         for inst in local_installations(self.profile):
-            inst_id, active = inst["installation_id"], _is_running(inst["path"], running)
-            if active and inst_id not in self.open_sessions:
+            games.setdefault(inst["game_id"], []).append(inst)
+        for game_id, installs in games.items():
+            active = [i for i in installs if _is_running(i["path"], running)]
+            open_id = next((i["installation_id"] for i in installs if i["installation_id"] in self.open_sessions), None)
+            if active and open_id is None:
+                inst_id = active[0]["installation_id"]
                 event = self.profile.record("session.started", {"installation_id": inst_id},
-                                            game_id=inst["game_id"], adapter="executable",
+                                            game_id=game_id, adapter="executable",
                                             adapter_version=ADAPTER_VERSION)
                 self.open_sessions[inst_id] = (event, now)
                 written.append(event)
-            elif not active and inst_id in self.open_sessions:
-                started, t0 = self.open_sessions.pop(inst_id)
+            elif not active and open_id is not None:
+                started, t0 = self.open_sessions.pop(open_id)
                 written.append(self.profile.record("session.ended", {
-                    "installation_id": inst_id, "started_event_id": started["event_id"],
-                    "seconds": max(0, round(now - t0))}, game_id=inst["game_id"], adapter="executable",
+                    "installation_id": open_id, "started_event_id": started["event_id"],
+                    "seconds": max(0, round(now - t0))}, game_id=game_id, adapter="executable",
                     adapter_version=ADAPTER_VERSION))
-                written.extend(evaluate_rules(self.profile, inst["game_id"], inst_id))
-            elif active and inst_id in self.open_sessions:
-                pass
+                written.extend(evaluate_rules(self.profile, game_id, open_id))
         for inst_id, (started, _t0) in list(self.open_sessions.items()):
             if not any(i["installation_id"] == inst_id for i in local_installations(self.profile)):
                 self.open_sessions.pop(inst_id)

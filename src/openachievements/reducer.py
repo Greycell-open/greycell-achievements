@@ -26,6 +26,7 @@ PROVENANCE_BY_ADAPTER = {
     "manual": "manual",
     "executable": "local-executable",
     "save-file": "save-derived",
+    "steam-emulator": "emulator",
     "game-log": "game-log",
     "retroachievements": "imported",
     "steam": "imported",

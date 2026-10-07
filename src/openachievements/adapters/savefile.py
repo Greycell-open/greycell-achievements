@@ -57,7 +57,8 @@ METADATA = AdapterMetadata(
     rate_limits="checks save folders every few seconds while watching; parses only files that changed",
     known_limitations=(
         "needs a pack with save rules for the game; someone writes them once per game",
-        "reads JSON, INI-style, plain-text and Unreal Engine (GVAS) saves; other binary formats need their own reader",
+        "reads JSON, Easy Save 3, INI-style, plain-text, Unreal Engine (GVAS), .NET BinaryFormatter and Fireproof "
+        "(The Room) saves; other binary formats need their own reader",
         "notices progress when the game saves, not the instant it happens",
     ),
     terms_or_policy_notes="Observation only. Never writes to, uploads, or copies a save.",
@@ -260,8 +261,9 @@ def read_save(path: Path, fmt: str, folder: Path | None = None) -> tuple[object,
         raise SaveUnreadable(f"{Path(path).name} cannot be opened ({exc.strerror or exc})") from None
     raw = data.decode("utf-8", "replace").lstrip("﻿")
     if fmt == "json":
+        from ..savevalues import decode
         try:
-            return json.loads(raw), raw
+            return decode("json", data), raw
         except ValueError as exc:
             raise SaveUnreadable(f"{path.name} is not JSON ({exc})") from None
     if fmt == "gvas":
@@ -270,6 +272,18 @@ def read_save(path: Path, fmt: str, folder: Path | None = None) -> tuple[object,
             return parse(data), raw
         except GvasError as exc:
             raise SaveUnreadable(f"{path.name} is not a readable Unreal save ({exc})") from None
+    if fmt in ("nrbf", "es3"):
+        from ..savevalues import decode
+        try:
+            return decode(fmt, data), raw
+        except (ValueError, KeyError, TypeError, IndexError, RecursionError) as exc:
+            raise SaveUnreadable(f"{path.name} is not a readable {fmt} save ({exc})") from None
+    if fmt == "fireproof":
+        from ..fireproof import FireproofError, parse
+        try:
+            return parse(data)
+        except FireproofError as exc:
+            raise SaveUnreadable(f"{path.name} is not a readable Fireproof save ({exc})") from None
     if fmt == "ini":
         parser = configparser.ConfigParser(interpolation=None, strict=False)
         parser.optionxform = str

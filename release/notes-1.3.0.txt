@@ -1,0 +1,7 @@
+Greycell Achievements 1.3.0
+- Repacked games get their achievements on their own: the app reads the achievement files Steam emulators write (CODEX, RUNE, Goldberg, GSE, EMPRESS, OnlineFix), with a popup as you unlock.
+- Your saves are kept: every game's saves are copied into your profile folder as they change, and put back by themselves when you reinstall a game. Each game's window has Restore.
+- Every game is tracked for play time, even ones Steam has never heard of; GOG installs are named by GOG's own file.
+- What changed: see what a game wrote to its save, and turn any value into an achievement rule with a click. Rules can also be learned from your unlocks.
+- The Room 4: Old Sins unlocks from its save. Saves from .NET, Easy Save 3 and Godot games can be read.
+- A game's crash reporter no longer counts as a second copy, so play time is no longer counted twice.

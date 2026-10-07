@@ -8,8 +8,9 @@ Without being asked, the app:
   - looks at greycell.app's update manifest at start and once a day ("updates");
   - fetches achievement pictures and game banners from the platforms' image
     hosts, once each, then keeps them on this computer ("pictures");
-  - asks Steam for each Steam game's unlock percentages, for rare
-    achievements ("rarity");
+  - asks Steam for each Steam game's unlock percentages and achievement
+    names, for rare achievements and for matching what a Steam emulator
+    recorded ("rarity");
   - shares anonymous counts with greycell.app once an hour: achievements
     unlocked, games completed or added, and that it was installed, never by
     whom ("stats", community.py; owner, 2026-10-03: on by default, said once

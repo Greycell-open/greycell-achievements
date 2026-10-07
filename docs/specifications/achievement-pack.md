@@ -56,6 +56,7 @@ A list of up to 2000 achievements:
 | `repeatable` | may be unlocked more than once |
 | `category`, `rarity` | free text |
 | `icon` | an https URL, or a path inside the pack (checked; `..` and absolute paths are refused) |
+| `external_id` | the platform's own id for it, such as Steam's internal name (`FOY_COMPLETE`); up to 128 characters |
 | `progress` | `{type, target, unit}`; reaching `target` unlocks automatically |
 | `rules` | see below |
 
@@ -102,7 +103,12 @@ A `save` rule is either a field comparison or a text search:
   A key that itself contains dots matches whole (`SavedFloatMap.NC.Character.GyroMult`).
 - `format` is `json`, `ini`, `text` or `gvas` (Unreal Engine save games: top-level
   properties, with maps, arrays and structs of numbers, text and booleans; anything
-  else is skipped, never guessed).
+  else is skipped, never guessed) or `fireproof` (The Room series' LZF-packed XML
+  slots: `slot.<field>` for the slot's simple values such as `slot.GameComplete`,
+  and `levels.<scene>` for each room's Locked, Entered or Complete state), `nrbf`
+  (.NET BinaryFormatter, common in Unity games: classes as objects, property
+  backing fields by their property name, lists and simple-keyed dictionaries as
+  such) or `es3` (Easy Save 3 JSON with its `__type`/`value` wrappers removed).
 - `op` is one of `== != >= <= > < exists contains`. Numbers compare as numbers
   when both sides are numeric; otherwise `==` and `!=` compare text ignoring case.
 - An achievement unlocks when **one** save file satisfies **all** its rules, so

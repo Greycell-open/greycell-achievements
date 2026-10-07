@@ -254,6 +254,13 @@ def cmd_notify(args) -> None:
                   f"Steam unlocks {'shown' if s['steam'] else 'left to Steam'}.")
 
 
+def cmd_emulators(args) -> None:
+    from .adapters import emulator
+    emulator.set_enabled(_profile(args), args.state == "on")
+    _out(args, {"emulators": args.state}, "Achievements Steam emulators record will be read." if args.state == "on"
+         else "Steam emulator achievement files will not be read.")
+
+
 def cmd_autodetect(args) -> None:
     from .adapters import autodetect
     autodetect.set_enabled(_profile(args), args.state == "on")
@@ -284,8 +291,12 @@ def cmd_steam(args) -> None:
 
 
 def cmd_save(args) -> None:
+    from . import cli_saves
     from .adapters import savefile
     p = _profile(args)
+    if args.action in cli_saves.ACTIONS:
+        cli_saves.run(args, p, _out)
+        return
     if args.action in ("allow", "revoke"):
         try:
             if args.action == "allow":
@@ -477,6 +488,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     au = sub.add_parser("autodetect", help="recognise games from running programs (on by default)")
     au.add_argument("state", choices=["on", "off"]); au.set_defaults(func=cmd_autodetect)
+    em = sub.add_parser("emulators", help="read achievements Steam emulators record (on by default)")
+    em.add_argument("state", choices=["on", "off"]); em.set_defaults(func=cmd_emulators)
 
     sm = sub.add_parser("steam", help="follow Steam on this computer: games and achievements as they happen")
     sms = sm.add_subparsers(dest="action", required=True)
@@ -486,7 +499,7 @@ def build_parser() -> argparse.ArgumentParser:
     sms.add_parser("unlink"); sms.add_parser("sync", help="import now instead of waiting for 'watch'")
     sm.set_defaults(func=cmd_steam)
 
-    sa = sub.add_parser("save", help="save-file achievements: check what is found, or point at another folder")
+    sa = sub.add_parser("save", help="save-file achievements, the save keeper (kept copies, restore) and rule learning")
     sas = sa.add_subparsers(dest="action", required=True)
     sc2 = sas.add_parser("check", help="list save files and which achievements each satisfies")
     sc2.add_argument("pack_id", nargs="?")
@@ -496,6 +509,8 @@ def build_parser() -> argparse.ArgumentParser:
     sl = sas.add_parser("locate", help="this machine keeps a game's saves in another folder (allows it too)")
     sl.add_argument("pack_id"); sl.add_argument("save_id"); sl.add_argument("folder", nargs="?")
     sl.add_argument("--reset", action="store_true", help="use the pack's default location again")
+    from . import cli_saves
+    cli_saves.register(sas)
     sa.set_defaults(func=cmd_save)
 
     se = sub.add_parser("serve", help="open the library in your browser, on this computer only")

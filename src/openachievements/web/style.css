@@ -83,6 +83,19 @@ input:focus, select:focus { outline: 2px solid var(--violet); outline-offset: 1p
 label.inline { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
 label.inline select { width: auto; padding: 4px 8px; }
 .saves-found { margin: 10px 18px 0; padding: 10px 12px; border-radius: 12px; background: var(--panel-2); color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.saves-found > div { margin-top: 4px; }
+.saves-found .saves-head { margin-top: 0; color: var(--text); }
+.saves-found .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.saves-more:empty { display: none; }
+.saves-more { margin-top: 10px; display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+.save-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;
+  padding: 6px 8px; border-radius: 8px; background: var(--panel); }
+.save-row code { overflow-wrap: anywhere; }
+.save-make { display: flex; gap: 6px; align-items: center; }
+.save-make select { width: auto; max-width: 220px; padding: 4px 6px; }
+.saves-found button { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 6px 12px;
+  cursor: pointer; color: var(--text); white-space: nowrap; font-size: 13px; }
+.saves-found button:hover { border-color: var(--cyan); }
 .steam-body { padding: 8px 18px 18px; display: grid; gap: 12px; }
 .steam-step { background: var(--panel-2); border-radius: 12px; padding: 14px; }
 .steam-step h3 { margin: 0 0 6px; font-size: 15px; }

@@ -340,10 +340,13 @@ def test_a_program_rejected_before_its_title_was_crawled_gets_another_look(profi
     monkeypatch.setattr(savefile, "root_folder", lambda name: None)
     exe = make_game(tmp_path / "D", "Games/Hollow Knight/hollow_knight.exe", ["UnityPlayer.dll"])
     d = ad.AutoDetector(profile, catalog_dir=tmp_path / "c")
-    assert d.poll({exe}) == []                                    # not catalogued yet
+    assert [f["game_id"] for f in d.poll({exe})] == ["local-hollow-knight"]   # not catalogued yet: play time only
+    d._matcher_at = -1e9
+    assert d.poll({exe}) == []                                    # refreshed, still unnamed: not announced again
     cat.crawl([(367520, None)], tmp_path / "c", fs({367520: (1, page("Hollow Knight", [row("K", "k", "bb", "1.0")]))}))
     d._matcher_at = -1e9                                          # the periodic refresh comes round
     assert d.poll({exe})[0]["game_id"] == "steam-367520"
+    assert profile.state()["games"]["local-hollow-knight"]["linked_to"] == "steam-367520"   # one game, one history
 
 
 def test_a_status_from_a_device_with_a_slow_clock_is_kept(profile):

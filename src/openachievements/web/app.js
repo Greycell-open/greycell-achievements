@@ -75,7 +75,7 @@
   }, true);
   const PROVENANCE_TEXT = {
     "imported": "imported", "local-executable": "played here", "save-derived": "from save",
-    "game-log": "from game log", "manual": "ticked by hand", "unverified": "unverified",
+    "game-log": "from game log", "manual": "ticked by hand", "unverified": "unverified", "emulator": "game reported",
   };
   const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "";
   const fmtHours = (s) => s >= 3600 ? (s / 3600).toFixed(1) + " h" : s < 60 ? "under a minute" : Math.round(s / 60) + " min";
@@ -334,17 +334,7 @@
       ? `<p class="muted">No achievement list yet. <button type="button" data-fetchach="${esc(g.game_id)}">Get achievements from Steam</button></p>`
       : `<p class="muted">No achievements for this game yet.</p>`);
     $("gameStatusWrap").hidden = mode !== "local";
-    $("savesFound").hidden = true;
-    if (mode === "local") {
-      api("v1/local/games/" + encodeURIComponent(id) + "/saves").then((r) => {
-        if (!r.found.length || $("gameDialog").dataset.game !== id) return;
-        $("savesFound").innerHTML = `Saves look like they are in <code>${esc(r.found[0])}</code>` +
-          (r.found.length > 1 ? ` (and ${r.found.length - 1} more)` : "") +
-          (r.rules ? `. Achievements are read from these saves as you play.`
-            : `. Unlocks from saves need rules for this game, which are not written yet.`);
-        $("savesFound").hidden = false;
-      }).catch(() => {});
-    }
+    renderSaves(id, g);
     $("revealHidden").checked = revealAll;
     $("revealWrap").hidden = !g.achievements.some((a) => a.secret);
     $("gameStatus").value = g.status || "none";
@@ -352,12 +342,118 @@
     if (!$("gameDialog").open) $("gameDialog").showModal();
   }
 
+  // ---- saves: kept copies, putting them back, what changed, rules -------------
+  let saveView = { id: null, game: null, kept: null, changes: [], suggestions: [] };
+  const gid = (id) => encodeURIComponent(id);
+
+  async function renderSaves(id, g) {
+    const box = $("savesFound");
+    box.hidden = true;
+    saveView = { id, game: g, kept: null, changes: [], suggestions: [] };
+    if (mode !== "local") return;
+    let kept, saves;
+    try {
+      [kept, saves] = await Promise.all([api(`v1/local/games/${gid(id)}/kept`), api(`v1/local/games/${gid(id)}/saves`)]);
+    } catch (err) { return; }
+    if ($("gameDialog").dataset.game !== id) return;
+    if (!kept.folders.length && !kept.snapshots.length) return;
+    saveView.kept = kept;
+    const n = kept.snapshots.length, newest = kept.snapshots[0];
+    box.innerHTML = `<div class="saves-head"><b>Saves</b> <span>` +
+      (newest ? `${n} kept ${n === 1 ? "copy" : "copies"}, newest ${esc(since(newest.taken_at))}`
+        : kept.on ? "not kept yet: a copy is made after the game next saves" : "keeping copies is off") + `</span></div>` +
+      (kept.folders.length ? `<div>From <code>${esc(kept.folders[0])}</code></div>` : "") +
+      `<div>${saves.rules ? "Achievements are read from these saves as you play."
+        : g.total ? "No save rules for this game yet. What changed shows what the game wrote, and any value can become a rule."
+          : "This game has no achievements: its saves are kept, and its play time counted."}</div>` +
+      `<div class="row">` +
+      (kept.folders.length ? `<button type="button" data-savekeep="1">Keep a copy now</button>` : "") +
+      (n ? `<button type="button" data-saverestorelist="1">Restore\u2026</button>` : "") +
+      (n && g.total ? `<button type="button" data-savechanges="1">What changed</button>` : "") + `</div>` +
+      `<div class="saves-more" id="savesMore"></div><div class="saves-more" id="savesSuggest"></div>`;
+    box.hidden = false;
+    if (g.total && n) {
+      api(`v1/local/games/${gid(id)}/suggestions`).then((r) => {
+        if (saveView.id !== id || !r.suggestions.length) return;
+        saveView.suggestions = r.suggestions;
+        $("savesSuggest").innerHTML = `<b>Rules learned from your unlocks</b>` + r.suggestions.map((sg, i) =>
+          `<div class="save-row"><span><b>${esc(sg.achievement)}</b>: <code>${esc(sg.field)} ${esc(sg.op)} ${esc(JSON.stringify(sg.value))}</code>` +
+          ` in ${esc(sg.file)} <span class="muted">(${esc(sg.confidence)} confidence)</span></span>` +
+          `<button type="button" data-savesuggest="${i}">Use this rule</button></div>`).join("");
+      }).catch(() => {});
+    }
+  }
+
+  function showRestoreList() {
+    const k = saveView.kept;
+    $("savesMore").innerHTML = `<b>Put saves back</b><div class="muted">What is there now is kept first. Close the game before.</div>` +
+      k.snapshots.slice(0, 25).map((sn) => `<div class="save-row"><span>${esc(fmtDate(sn.taken_at))} ` +
+        `${esc(new Date(sn.taken_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))} ` +
+        `<span class="muted">${sn.files} file${sn.files === 1 ? "" : "s"}, ` +
+        `${sn.size < 1024 ? sn.size + " bytes" : sn.size < 1048576 ? Math.round(sn.size / 1024) + " KB" : (sn.size / 1048576).toFixed(1) + " MB"}` +
+        (sn.reason === "before-restore" ? ", taken before a restore" : sn.reason === "asked" ? ", kept by you" : "") +
+        `</span></span><button type="button" data-saverestore="${esc(sn.id)}">Restore</button></div>`).join("");
+  }
+
+  async function showChanges() {
+    const r = await api(`v1/local/games/${gid(saveView.id)}/changes`);
+    saveView.changes = r.changes.slice().reverse();
+    const options = saveView.game.achievements
+      .map((a) => `<option value="${esc(a.id)}">${esc(a.name)}</option>`).join("");
+    $("savesMore").innerHTML = `<b>What the game wrote</b><div class="muted">Newest first. Play to the moment an achievement ` +
+      `describes, then pick the value that changed and the achievement it means.</div>` +
+      (saveView.changes.map((c, i) => `<div class="save-row"><span><span class="muted">${esc(since(c.at))}</span> ` +
+        `<code>${esc(c.field)}</code>: ${esc(JSON.stringify(c.old))} \u2192 <b>${esc(JSON.stringify(c.new))}</b> ` +
+        `<span class="muted">${esc(c.file)}</span></span><span class="save-make"><select data-rulefor="${i}">` +
+        `<option value="">Make a rule for\u2026</option>${options}</select>` +
+        `<button type="button" data-saverule="${i}">Add</button></span></div>`).join("") ||
+        `<div class="muted">Nothing changed between the kept copies yet. Play, and look again.</div>`);
+  }
+
+  async function addSaveRule(body) {
+    await api(`v1/local/games/${gid(saveView.id)}/rules`, { method: "POST", body: JSON.stringify(body) });
+    toast("Rule added. It unlocks from the save the next time the game writes it.");
+    renderSaves(saveView.id, saveView.game);
+  }
+
+  async function saveAction(t) {
+    const id = saveView.id;
+    if (t.dataset.savekeep) {
+      const r = await api(`v1/local/games/${gid(id)}/keep`, { method: "POST" });
+      toast(r.taken ? "A copy of the saves is kept." : "Nothing new to keep: the newest copy is the same.");
+      return renderSaves(id, saveView.game);
+    }
+    if (t.dataset.saverestorelist) return showRestoreList();
+    if (t.dataset.savechanges) return showChanges();
+    if (t.dataset.saverestore) {
+      const sn = saveView.kept.snapshots.find((x) => x.id === t.dataset.saverestore);
+      if (!confirm(`Put back the saves from ${new Date(sn.taken_at).toLocaleString()}? ` +
+        "What is there now is kept first, so this can be undone. Close the game before you do.")) return;
+      const r = await api(`v1/local/games/${gid(id)}/restore`, { method: "POST", body: JSON.stringify({ snapshot: sn.id }) });
+      toast(`Saves put back: ${r.written} file${r.written === 1 ? "" : "s"} written.`);
+      return renderSaves(id, saveView.game);
+    }
+    if (t.dataset.saverule) {
+      const c = saveView.changes[Number(t.dataset.saverule)];
+      const achievement = document.querySelector(`select[data-rulefor="${t.dataset.saverule}"]`).value;
+      if (!achievement) return toast("Pick the achievement this value means first.");
+      const grows = typeof c.new === "number" && typeof c.old === "number" && c.new > c.old;
+      return addSaveRule({ achievement, folder: c.folder, file: c.file, field: c.field, op: grows ? ">=" : "==",
+                           value: c.new, format: c.format });
+    }
+    if (t.dataset.savesuggest) {
+      const sg = saveView.suggestions[Number(t.dataset.savesuggest)];
+      return addSaveRule({ achievement: sg.achievement_id, folder: sg.folder, file: sg.file, field: sg.field,
+                           op: sg.op, value: sg.value, format: sg.format });
+    }
+  }
+
   // ---- dashboard: now playing, recent unlocks, kept live -----------------------
   let pulseStamp = null;
   let nowPlaying = [];
   let fresh = new Set();
   const SOURCE = { steam: "Steam", "steam-local": "Steam", psn: "PlayStation", xbox: "Xbox", gog: "GOG", "save-file": "Save file", retroachievements: "RA",
-                   executable: "Play", test: "Test" };
+                   executable: "Play", "steam-emulator": "Game", test: "Test" };
 
   function since(iso) {
     const s = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
@@ -850,6 +946,7 @@
     if (!t) return;
     try {
       if (t.dataset.game) return openGame(t.dataset.game);
+      if (Object.keys(t.dataset).some((k) => k.startsWith("save"))) return await saveAction(t);
       if (t.dataset.tab) return setAuthTab(t.dataset.tab);
       if (t.dataset.act === "library") return loadLibrary();
       if (t.dataset.act === "steam") { $("steamDialog").showModal(); return renderSteam(); }

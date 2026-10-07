@@ -1,0 +1,124 @@
+{
+ "game_id": "steam-1361320",
+ "title": "The Room 4: Old Sins",
+ "verified": "2026-10-07 against the owner's real save (DRM-free build, z.save, format 2): the TrackedLevelStates table lists all ten scenes with FOY_Main Complete after the Foyer, KIT_Main and STU_Main Entered, the rest Locked; GameComplete false mid-game. The other rooms' Complete and GameComplete true follow the same fields and are not yet seen in a real save.",
+ "saves": [
+  {
+   "id": "slot",
+   "root": "LOCALLOW",
+   "path": "Fireproof Studios/Old Sins",
+   "pattern": "*.save",
+   "format": "fireproof"
+  }
+ ],
+ "achievements": {
+  "Foyer Complete": {
+   "why": "Completed the Foyer. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); FOY_Main is Foyer.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.FOY_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Study Complete": {
+   "why": "Completed the Study. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); STU_Main is Study.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.STU_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Curiosity Room Complete": {
+   "why": "Completed the Curiosity Room. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); CUR_Main is Curiosity Room.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.CUR_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Kitchen Complete": {
+   "why": "Completed the Kitchen. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); KIT_Main is Kitchen.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.KIT_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Maritime Room Complete": {
+   "why": "Completed the Maritime Room. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); MAR_Main is Maritime Room.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.MAR_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Garden Complete": {
+   "why": "Completed the Garden. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); GAR_Main is Garden.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.GAR_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Japanese Gallery Complete": {
+   "why": "Completed the Japanese Gallery. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); JPN_Main is Japanese Gallery.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.JPN_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "Art Studio Complete": {
+   "why": "Completed the Art Studio. The hub scene's sub-level manager keeps one state per room (Locked, Entered, Complete); ART_Main is Art Studio.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "levels.ART_Main",
+     "op": "==",
+     "value": "Complete"
+    }
+   ]
+  },
+  "The Room: Old Sins Complete": {
+   "why": "Finished the game. The slot's own GameComplete flag (false until the ending).",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "slot",
+     "field": "slot.GameComplete",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  }
+ }
+}

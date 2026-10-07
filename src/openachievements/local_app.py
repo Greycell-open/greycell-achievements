@@ -555,4 +555,6 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         except SyncError as exc:
             raise HTTPException(502, {"code": exc.code, "message": str(exc)}) from None
 
+    from .local_saves import add_routes
+    add_routes(app, profile, check)
     return app

@@ -75,7 +75,41 @@ def test_a_name_that_matches_two_games_is_not_guessed(profile, monkeypatch, tmp_
     games = {1: (1, page("Doom", [row("A", "a", "aa", "1.0")])), 2: (1, page("DOOM", [row("B", "b", "bb", "1.0")]))}
     cat.crawl([(a, None) for a in games], tmp_path / "c", fake_steam(games))
     exe = make_game(tmp_path / "D", "Games/Doom/doom.exe", ["steam_api64.dll"])
-    assert detector(profile, tmp_path / "c", monkeypatch, tmp_path).poll({exe}) == []
+    found = detector(profile, tmp_path / "c", monkeypatch, tmp_path).poll({exe})
+    # Not guessed as either Steam game: kept as a local game, for play time only.
+    assert [f["game_id"] for f in found] == ["local-doom"]
+    assert not profile.state()["packs"]
+
+
+def test_a_game_no_catalogue_names_is_still_tracked_for_play_time(profile, catalogue, monkeypatch, tmp_path):
+    exe = make_game(tmp_path / "D", "Games/Tiny Indie Thing [DRM-Free] v1.2/TinyThing.exe",
+                    ["UnityPlayer.dll", "TinyThing_Data"])
+    (Path(exe).parent / "TinyThing_Data" / "app.info").write_text("Small Studio\nTiny Thing")
+    saves = tmp_path / "roots" / "LOCALLOW" / "Small Studio" / "Tiny Thing"
+    saves.mkdir(parents=True)
+    found = detector(profile, catalogue, monkeypatch, tmp_path).poll({exe})
+    assert found[0]["game_id"] == "local-tiny-indie-thing" and found[0]["title"] == "Tiny Indie Thing"
+    assert found[0]["save_folders"][0] == str(saves)                     # where app.info says
+    game = profile.state()["games"]["local-tiny-indie-thing"]
+    assert game["status"] == "playing" and len(game["installations"]) == 1
+    from openachievements.adapters import executable
+    w = executable.Watcher(profile)
+    w.poll({exe}, now=0)
+    w.poll(set(), now=900)
+    lib = next(g for g in profile.library()["games"] if g["game_id"] == "local-tiny-indie-thing")
+    assert lib["playtime_seconds"] == 900 and lib["total"] == 0              # play time, no achievements
+
+
+def test_a_gog_install_is_named_by_its_own_info_file(profile, catalogue, monkeypatch, tmp_path):
+    exe = make_game(tmp_path / "D", "GOG Games/Some Game/bin/somegame.exe")
+    (Path(exe).parent.parent / "goggame-1207658924.info").write_text(json.dumps(
+        {"gameId": "1207658924", "rootGameId": "1207658924", "name": "Some Game: Deluxe"}))
+    (Path(exe).parent.parent / "goggame-1999.info").write_text(json.dumps(
+        {"gameId": "1999", "rootGameId": "1207658924", "name": "Some Game DLC"}))      # a DLC: not the game
+    found = detector(profile, catalogue, monkeypatch, tmp_path).poll({exe})
+    assert found[0]["game_id"] == "gog-1207658924"
+    game = profile.state()["games"]["gog-1207658924"]
+    assert game["title"] == "Some Game: Deluxe" and game["external_ids"] == {"gog": 1207658924}
 
 
 def test_a_steam_game_is_identified_by_its_install_folder(profile, catalogue, monkeypatch, tmp_path):

@@ -2,7 +2,9 @@
 
 One round every few seconds: recognise running games and count their play
 time, read allowed save folders, follow Steam on this computer (unlocks and
-play history), find games by their save folders, and fetch achievement lists
+play history), read the achievements a Steam emulator recorded, find games by
+their save folders, keep a copy of every game's saves (and put them back when a
+reinstalled game has none), and fetch achievement lists
 for library games that have none. `openachievements watch` runs it in the
 foreground; `openachievements serve` runs it in the background, so the library
 page alone keeps everything up to date.
@@ -29,7 +31,8 @@ def _quiet(_message: str) -> None:
 
 def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], None] = _quiet,
                   stop: threading.Event | None = None) -> None:
-    from .adapters import autodetect, executable, gog, psn, retroachievements, savefile, saverules, steam_local, xbox
+    from .adapters import (autodetect, emulator, executable, gog, psn, retroachievements, savefile, saverules,
+                           steam_local, xbox)
     from .catalog import steam as cat
     from .notify import Notifier
 
@@ -50,9 +53,12 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
 
     procs = executable.Watcher(profile)
     detector = autodetect.AutoDetector(profile)
-    watchers = [savefile.SaveWatcher(profile), steam_local.SteamLocalWatcher(profile), psn.PsnWatcher(profile),
+    watchers = [savefile.SaveWatcher(profile), emulator.EmulatorWatcher(profile), steam_local.SteamLocalWatcher(profile),
+                psn.PsnWatcher(profile),
                 xbox.XboxWatcher(profile), gog.GogWatcher(profile),
                 retroachievements.RaWatcher(profile)]
+    from .savekeeper import KeeperWatcher
+    keeper = KeeperWatcher(profile)                   # every known save folder, kept; put back on reinstall
     lists = cat.PackFetcher(profile)
     last_lists = 0.0
     from . import rarity
@@ -102,6 +108,11 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
             global LIVE
             LIVE = {"playing": sorted(playing), "at": time.time()}
         except Exception as exc:  # noqa: BLE001 - the dashboard is a nicety; keep watching
+            complain(exc)
+        try:                                                  # the save keeper: copies, and saves put back
+            for message in keeper.poll(set(LIVE["playing"])):
+                say(f"  {message}")
+        except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die
             complain(exc)
         try:
             popup.flush()                                     # the round's fresh unlocks, one popup each

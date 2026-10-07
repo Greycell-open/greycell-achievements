@@ -11,7 +11,10 @@ Only what a real save was seen to prove goes in a file: an achievement nobody
 has tied to a value in the save stays unmapped rather than guessed, because a
 wrong unlock is worse than a missing one.
 
-Because these rules come with the app rather than from another person, their
+Rules the player wrote on this computer (savelearn.py) live in the machine
+settings folder and are merged in the same way.
+
+Because these rules come with the app or the player rather than from another person, their
 save folder is allowed once, automatically, when it exists on this machine.
 `save revoke` withdraws that, and it is not granted again.
 """
@@ -39,20 +42,54 @@ def bundled() -> dict[str, dict]:
     return found
 
 
+def _name(name) -> str:
+    return " ".join(str(name or "").split()).lower()
+
+
+def local(profile: Profile) -> dict[str, dict]:
+    """Rules written on this computer (savelearn.add_rule): same shape, kept
+    in the machine settings folder, never synced."""
+    from ..savelearn import rules_dir
+    found = {}
+    for path in sorted(rules_dir(profile).glob("*.json")):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            found[data["game_id"]] = data
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return found
+
+
+def everything(profile: Profile) -> dict[str, dict]:
+    """Shipped rules with this computer's added on top (its own win per achievement)."""
+    out = {gid: {**r, "saves": list(r["saves"]), "achievements": dict(r["achievements"])}
+           for gid, r in bundled().items()}
+    for gid, mine in local(profile).items():
+        if gid not in out:
+            out[gid] = mine
+            continue
+        known = {s["id"] for s in out[gid]["saves"]}
+        out[gid]["saves"] += [s for s in mine.get("saves", []) if s.get("id") not in known]
+        out[gid]["achievements"].update(mine.get("achievements", {}))
+    return out
+
+
 def _merged(pack: dict, rules: dict) -> tuple[dict, list[dict]] | None:
     """The pack with this file's saves and rules, or None if it has them."""
-    names = {a.get("name"): a for a in pack["achievements"].values()}
+    # Steam display names can carry stray spaces ("The Room: Old Sins Complete ").
+    names = {_name(a.get("name")): a for a in pack["achievements"].values()}
+    wanted_by_name = {_name(n): r for n, r in rules["achievements"].items()}
     achievements = []
     for aid, definition in pack["achievements"].items():
         item = dict(definition)
-        wanted = rules["achievements"].get(definition.get("name"))
+        wanted = wanted_by_name.get(_name(definition.get("name")))
         if wanted is not None:
             item["rules"] = wanted["rules"]
         achievements.append(item)
-    if not any(n in names for n in rules["achievements"]):
+    if not any(n in names for n in wanted_by_name):
         return None                                   # none of its achievements are in this pack
     if pack.get("saves") == rules["saves"] and all(
-            (names[n].get("rules") or []) == r["rules"] for n, r in rules["achievements"].items() if n in names):
+            (names[n].get("rules") or []) == r["rules"] for n, r in wanted_by_name.items() if n in names):
         return None
     meta = {k: v for k, v in pack.items() if k not in _META_SKIP}
     meta["id"] = pack["pack_id"]
@@ -65,7 +102,7 @@ def apply(profile: Profile) -> list[str]:
     its save folders once. Returns the pack ids it changed."""
     state = profile.state()
     changed = []
-    for game_id, rules in bundled().items():
+    for game_id, rules in everything(profile).items():
         pack = state["packs"].get(game_id)
         if not pack or pack.get("removed"):
             continue

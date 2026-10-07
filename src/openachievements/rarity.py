@@ -99,6 +99,9 @@ def fetch(appid: str, http: Callable[[str], tuple[int, str]] | None = None, fold
     rows = [(str(a.get("internal_name") or ""), str(a.get("localized_name") or ""), a.get("player_percent_unlocked"))
             for a in items if isinstance(a, dict)]
     data = _tables(rows)
+    # Steam's internal names with their display names, for games whose unlocks
+    # arrive by internal name only (adapters/emulator.py).
+    data["names"] = {stable: name for stable, name, _pct in rows if stable and name}
     data.update(fetched=now, answered=True)
     write_json_atomic(_file(f"steam-{appid}", folder), data)
     return data if data["by_id"] else None
@@ -120,6 +123,13 @@ def _tables(rows) -> dict:
             seen[key] = seen.get(key, 0) + 1
             by_name[key] = pct
     return {"by_id": by_id, "by_name": {k: v for k, v in by_name.items() if seen[k] == 1}}
+
+
+def names(appid: str, folder: Path | None = None) -> dict | None:
+    """Steam internal name -> display name for one game, from the cache, or
+    None when the cache has not kept them (it predates them, or never fetched)."""
+    data = _load(f"steam-{appid}", folder)
+    return data.get("names") if data and isinstance(data.get("names"), dict) else None
 
 
 def fresh(appid: str, folder: Path | None = None, now: float | None = None) -> bool:
