@@ -591,6 +591,9 @@ def _hidden_text_missing(pack: dict) -> bool:
         a.get("hidden") and not a.get("description") for a in pack["achievements"].values())
 
 
+INDEX_PER_LOOK = 25                     # library games installed from the catalogue per look
+
+
 class PackFetcher:
     """Fetches achievement lists from Steam's public pages for library games the
     catalogue has not reached yet, most recently played first, one at a time
@@ -611,7 +614,7 @@ class PackFetcher:
         the catalogue, and every one whose list came from the public page with
         hidden achievements' descriptions blank, newest activity first."""
         state = self.profile.state()
-        missing = []
+        missing, from_index = [], []
         for game_id, game in state["games"].items():
             if not game_id.startswith("steam-") or not game_id[6:].isdigit():
                 continue
@@ -623,8 +626,16 @@ class PackFetcher:
                 if not _hidden_text_missing(pack):
                     continue
             elif pack is None and index is not None and appid in index.entries:
+                # Catalogued, yet no list: a game added before the crawl reached
+                # it, or found by its saves or an emulator. Install it from here.
+                from_index.append(appid)
                 continue
             missing.append((game.get("last_played") or "", appid))
+        for appid in from_index[:INDEX_PER_LOOK]:
+            try:
+                add_to_profile(self.profile, index, appid)
+            except (CatalogError, OSError, ValueError):
+                self._tried.add(appid)
         with self._lock:
             queued = set(self._queue)
             for _when, appid in sorted(missing, reverse=True):

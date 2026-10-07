@@ -299,3 +299,13 @@ def test_the_page_keeps_restores_and_turns_a_change_into_a_rule(profile, game, m
     done = client.post("/v1/local/games/oldsins/restore", headers=auth, json={"snapshot": older}).json()
     assert done["written"] == 1 and done["kept_before"] is True
     assert json.loads((game / "slot.json").read_text()) == {"levels": {"STU": "Entered"}}
+
+
+def test_a_save_folder_inside_another_of_the_same_game_is_kept_once(profile, game, tmp_path):
+    inner = game / "Saved" / "SaveGames"
+    inner.mkdir(parents=True)
+    profile.install_pack(write_pack(tmp_path / "rules", pack_id="oldsins-saves", game_id="oldsins",
+                                    saves=[{"id": "slot", "root": "LOCALLOW", "path": "Studio/Old Sins/Saved/SaveGames",
+                                            "pattern": "*.sav", "format": "gvas"}]))
+    savefile.allow(profile, "oldsins-saves", "slot")                  # found by name, and declared by rules
+    assert savekeeper.save_folders(profile)["oldsins"] == [game]

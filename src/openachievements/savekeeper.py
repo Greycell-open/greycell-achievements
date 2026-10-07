@@ -269,6 +269,12 @@ def save_folders(profile) -> dict[str, list[Path]]:
             game_id = (pack.get("game_ids") or [pack_id])[0]
             if folder is not None and folder not in out.get(game_id, []):
                 out.setdefault(game_id, []).append(folder)
+    # A folder inside another of the same game's (Townfall/Saved/SaveGames in
+    # Townfall) is already kept with it: keeping both would copy it twice.
+    for game_id, folders in out.items():
+        def inside(f: Path, other: Path) -> bool:
+            return f != other and os.path.normcase(str(f)).startswith(os.path.normcase(str(other)).rstrip("\\/") + os.sep)
+        out[game_id] = [f for f in folders if not any(inside(f, o) for o in folders)]
     return out
 
 

@@ -175,3 +175,17 @@ def test_switched_off_reads_nothing(profile, tmp_path, public):
     emulator.set_enabled(profile, False)
     assert emulator.EmulatorWatcher(profile).poll() == []
     assert not reducer.is_unlocked(profile.state(), "steam-10:foyer-complete")
+
+
+def test_a_library_game_without_a_list_gets_it_from_the_catalogue(profile, tmp_path, public):
+    """Hell Clock: in the library before the crawl reached it, never played
+    through Steam, so no list ever came and its emulator unlocks waited."""
+    profile.register_game("steam-1782460", "Hell Clock", platform="PC", external_ids={"steam": 1782460})
+    games = {1782460: (2, page("Hell Clock", ROOM))}
+    cat.crawl([(1782460, None)], tmp_path / "c", fake_steam(games, schemas={1782460: SCHEMA}))
+    ini_file(public, 1782460, INI)
+    watcher = emulator.EmulatorWatcher(profile, catalog_dir=tmp_path / "c")
+    assert watcher.poll() == []                                       # no list yet: the unlock waits
+    cat.PackFetcher(profile, fetch=fake_steam({})).want(cat.CatalogIndex(tmp_path / "c"))
+    assert profile.state()["packs"]["steam-1782460"]["achievements"]
+    assert [e["achievement_id"] for e in watcher.poll()] == ["steam-1782460:foyer-complete"]
