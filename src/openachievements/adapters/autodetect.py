@@ -60,6 +60,18 @@ def normalise(name: str) -> str:
     return " ".join(text.split())
 
 
+def title_parts(title: str) -> list[str]:
+    """The normalised name before and after a subtitle separator, each at least
+    6 characters: "Mini Airways - ATC simulator" gives "mini airways" and
+    "atc simulator". Callers use a part only when no other title shares it."""
+    parts = []
+    for sep in (":", " - ", " – ", " — "):
+        if sep in title:
+            head, tail = title.split(sep, 1)
+            parts += [p for p in (normalise(head), normalise(tail)) if len(p) >= 6]
+    return list(dict.fromkeys(parts))
+
+
 # Folder names engines, launchers and tools use for their own purposes. A game
 # with one of these as its whole title ("SAVED", "SYNC") is never matched by name.
 _GENERIC = {"saved", "saves", "savegames", "save", "sync", "config", "configs", "logs", "log", "cache", "caches",
@@ -73,19 +85,17 @@ class TitleMatcher:
     """Catalogue titles by normalised name. A match must be unique.
 
     A title with a subtitle ("Silent Hill: Townfall") is also known by the
-    subtitle alone when that is at least 6 characters and no other title shares
-    it, because games often name their folders that way."""
+    subtitle alone, and by the name before it ("Mini Airways - ATC simulator"
+    is the folder "Mini Airways"), when that part is at least 6 characters and
+    no other title shares it, because games often name their folders that way."""
 
     def __init__(self, index: cat.CatalogIndex | None, library: dict | None = None):
         self.by_name: dict[str, set] = {}
         subtitles: dict[str, set] = {}
         for appid, (_o, _l, _c, title) in (index.entries.items() if index else []):
             self.by_name.setdefault(normalise(title), set()).add(("steam", appid))
-            for sep in (":", " - "):
-                if sep in title:
-                    sub = normalise(title.split(sep, 1)[1])
-                    if len(sub) >= 6:
-                        subtitles.setdefault(sub, set()).add(("steam", appid))
+            for part in title_parts(title):
+                subtitles.setdefault(part, set()).add(("steam", appid))
         for sub, ids in subtitles.items():
             if len(ids) == 1 and sub not in self.by_name:
                 self.by_name[sub] = set(ids)

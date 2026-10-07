@@ -61,6 +61,8 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
     keeper = KeeperWatcher(profile)                   # every known save folder, kept; put back on reinstall
     lists = cat.PackFetcher(profile)
     last_lists = 0.0
+    from .finder import AchievementFinder
+    finder = AchievementFinder(profile)               # achievements for games recognised without any
     from . import rarity
     rare = rarity.RarityCrawler(profile)              # Steam's unlock percentages, one game at a time
     if steam_local.linked(profile):
@@ -76,10 +78,19 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
                 lists.want(cat.CatalogIndex(folder) if (folder / cat.PACKS_FILE).exists() else None)
             except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die
                 complain(exc)
+            try:
+                finder.want()
+                while finder.found:
+                    local_id, steam_id = finder.found.pop(0)
+                    say(f"  achievements found for {local_id}: linked into {steam_id}")
+            except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die
+                complain(exc)
         try:
             for found in detector.poll(running):
                 say(f"  recognised {found['title']} ({found['game_id']})"
                     + (f"; saves may be in {found['save_folders'][0]}" if found["save_folders"] else ""))
+                if found["game_id"].startswith("local-"):
+                    finder.want()                         # being played now: look its achievements up now
             for event in procs.poll(running):
                 show(event)
         except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die

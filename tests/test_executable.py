@@ -82,3 +82,26 @@ def test_missing_file_is_refused(profile, tmp_path):
 
 def test_the_process_list_can_be_read_on_this_os():
     assert isinstance(exe.running_executables(), set)
+
+
+def test_a_program_on_two_linked_games_is_one_session_on_the_shown_game(profile, tmp_path):
+    """A local stand-in linked into the Steam game it turned out to be (the
+    achievement finder, or a later recognition) often has the same program
+    registered on both. The library adds linked games' play time together, so
+    two sessions would show every minute twice."""
+    binary = tmp_path / "Games" / "Mini Airways" / "MiniAirways.exe"
+    binary.parent.mkdir(parents=True)
+    binary.write_bytes(b"MZ fake")
+    profile.register_game("local-mini-airways", "Mini Airways", platform="PC", external_ids={})
+    profile.register_game("steam-2289650", "Mini Airways - ATC simulator", platform="PC", external_ids={"steam": 2289650})
+    exe.register(profile, "local-mini-airways", binary)
+    profile.link_games("local-mini-airways", "steam-2289650")
+    exe.register(profile, "steam-2289650", binary)
+    w = exe.Watcher(profile)
+    running = {str(binary.resolve()).lower()}
+    started = [e for e in w.poll(running, now=0) if e["event_type"] == "session.started"]
+    assert [e["game_id"] for e in started] == ["steam-2289650"]
+    ended = [e for e in w.poll(set(), now=600) if e["event_type"] == "session.ended"]
+    assert [e["game_id"] for e in ended] == ["steam-2289650"]
+    shown = next(g for g in profile.library()["games"] if g["game_id"] == "steam-2289650")
+    assert shown["playtime_seconds"] == 600

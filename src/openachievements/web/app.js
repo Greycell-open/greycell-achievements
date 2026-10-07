@@ -331,8 +331,8 @@
         (shown === a && a.secret ? `<div class="ach-desc">Details are hidden until you unlock it.</div>`
           : shown.description ? `<div class="ach-desc">${esc(shown.description)}</div>` : "") +
         `<div class="chips">${chips.join("")}</div></div>${actions}</div>`;
-    }).join("") || (mode === "local" && /^steam-\d+$/.test(g.game_id)
-      ? `<p class="muted">No achievement list yet. <button type="button" data-fetchach="${esc(g.game_id)}">Get achievements from Steam</button></p>`
+    }).join("") || (mode === "local" && /^(steam-\d+|local-.+)$/.test(g.game_id)
+      ? `<p class="muted">No achievement list yet. <button type="button" data-fetchach="${esc(g.game_id)}">${g.game_id.startsWith("local-") ? "Find achievements on Steam" : "Get achievements from Steam"}</button></p>`
       : `<p class="muted">No achievements for this game yet.</p>`);
     $("gameStatusWrap").hidden = mode !== "local";
     renderSaves(id, g);
@@ -1131,8 +1131,12 @@
       }
       if (t.dataset.fetchach) {
         t.disabled = true; t.textContent = "Asking Steam\u2026";
-        await api("v1/local/games/" + encodeURIComponent(t.dataset.fetchach) + "/fetch-achievements", { method: "POST" });
-        toast("Achievement list added"); return loadLibrary();
+        try {
+          const r = await api("v1/local/games/" + encodeURIComponent(t.dataset.fetchach) + "/fetch-achievements", { method: "POST" });
+          toast("Achievement list added");
+          if (r && r.game_id && r.game_id !== t.dataset.fetchach) $("gameDialog").close();
+        } catch (e) { t.disabled = false; t.textContent = "Try again"; throw e; }
+        return loadLibrary();
       }
       if (t.id === "closeAdd") return $("addDialog").close();
       if (t.dataset.act === "account") return renderAccount();

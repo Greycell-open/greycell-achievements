@@ -207,6 +207,17 @@ def _is_running(path: str, running: set[str]) -> bool:
     return p in running or os.path.basename(p) in {os.path.basename(r) for r in running if "/" not in r and "\\" not in r}
 
 
+def _shown_game(games: dict, game_id: str) -> str:
+    """The game a game is shown inside (following links), the same way the
+    library folds linked games; a cycle stops where it closes."""
+    seen = [game_id]
+    while True:
+        nxt = (games.get(seen[-1]) or {}).get("linked_to")
+        if not nxt or nxt not in games or nxt in seen:
+            return seen[-1]
+        seen.append(nxt)
+
+
 @dataclass
 class Watcher:
     """Turns process-list snapshots into session events and rule unlocks.
@@ -218,23 +229,30 @@ class Watcher:
         running = running_executables() if running is None else running
         now = time.monotonic() if now is None else now
         written: list[dict] = []
-        # One session per game: two of its programs running at once (the game
-        # and its crash reporter, or two copies) are one sitting, not two, and
-        # it ends only when none of them is running any more.
+        # One session per game as shown: two of its programs running at once
+        # (the game and its crash reporter, or two copies) are one sitting, not
+        # two, and it ends only when none of them is running any more. A game
+        # linked into another (a local stand-in into the Steam game it turned
+        # out to be) is the same game: its copy of the program registered on
+        # both would otherwise count every minute twice in the library, which
+        # adds the play time of linked games together.
+        library = self.profile.state()["games"]
         games: dict[str, list[dict]] = {}
         for inst in local_installations(self.profile):
-            games.setdefault(inst["game_id"], []).append(inst)
-        for game_id, installs in games.items():
-            active = [i for i in installs if _is_running(i["path"], running)]
-            open_id = next((i["installation_id"] for i in installs if i["installation_id"] in self.open_sessions), None)
-            if active and open_id is None:
-                inst_id = active[0]["installation_id"]
+            games.setdefault(_shown_game(library, inst["game_id"]), []).append(inst)
+        for shown, installs in games.items():
+            active = sorted((i for i in installs if _is_running(i["path"], running)),
+                            key=lambda i: i["game_id"] != shown)      # the shown game's own copy first
+            open_inst = next((i for i in installs if i["installation_id"] in self.open_sessions), None)
+            if active and open_inst is None:
+                inst_id, game_id = active[0]["installation_id"], active[0]["game_id"]
                 event = self.profile.record("session.started", {"installation_id": inst_id},
                                             game_id=game_id, adapter="executable",
                                             adapter_version=ADAPTER_VERSION)
                 self.open_sessions[inst_id] = (event, now)
                 written.append(event)
-            elif not active and open_id is not None:
+            elif not active and open_inst is not None:
+                open_id, game_id = open_inst["installation_id"], open_inst["game_id"]
                 started, t0 = self.open_sessions.pop(open_id)
                 written.append(self.profile.record("session.ended", {
                     "installation_id": open_id, "started_event_id": started["event_id"],

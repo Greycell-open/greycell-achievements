@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.4
+- Games recognised without achievements now get them: when a game is known only by its folder, the app looks it up in the Steam catalogue and Steam's store, downloads its achievement list, and links the game so play time and saves stay with it. It found Mini Airways (Steam calls it "Mini Airways - ATC simulator").
+- A Steam title is also recognised by its name before a subtitle, when no other game shares that name.
+- The game window offers "Find achievements on Steam" for such games.

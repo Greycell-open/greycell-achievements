@@ -423,6 +423,16 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     @app.post("/v1/local/games/{game_id}/fetch-achievements")
     def fetch_achievements(game_id: str, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
+        if game_id.startswith("local-"):                  # a game recognised without achievements: find it on Steam
+            from .finder import AchievementFinder
+            found = AchievementFinder(profile, fetch=cat.PacedFetcher(pace=1.0, retries=1)).find_one(game_id)
+            if found["result"] == "linked":
+                return {"ok": True, "game_id": found["steam_game"]}
+            message = {"no-achievements": "Steam has this game, but it has no achievements",
+                       "unreachable": "Steam could not be reached; try again later",
+                       "skipped": "This game is already linked to another"}.get(
+                           found["result"], "No Steam game with this name was found")
+            raise HTTPException(404, {"code": found["result"], "message": message})
         if not game_id.startswith("steam-") or not game_id[6:].isdigit():
             raise HTTPException(400, {"code": "bad_request", "message": "only Steam games have a public list"})
         if cat.PackFetcher(profile).fetch_one(int(game_id[6:])):
