@@ -24,6 +24,12 @@ fork), so a copy of a game made by any of these groups is read the same way:
                    hlm.ini, ds.ini, steam_api.ini -> SteamEmu/UserStats
                    (or Documents/<user>/<appid>/SteamEmu)
     UniverseLAN    UniverseLAN.ini -> UniverseLANData
+    Goldberg, GSE  portable saves: steam_settings/configs.user.ini
+                   ([user::saves] local_save_path, relative to the emulator's
+                   dll, or saves_folder_name under Roaming), or the older
+                   local_save.txt beside the dll; then <folder>/<appid>.
+                   steam_settings/achievements.json is the game's list of
+                   achievements, not unlocks, and is never read as unlocks.
 
 Every format answers the same question, which achievements are unlocked and
 when, and only an explicit "achieved" counts: a wrong guess at a format can
@@ -60,7 +66,7 @@ FILES = ("achievements.ini", "achievements.json", "achiev.ini", "stats.ini", "Ac
          "Achievements.ini", "stats/achievements.ini", "Stats/Achievements.ini", "stats.bin",
          "stats/CreamAPI.Achievements.cfg", "user_stats.ini", "UserStats/achiev.ini")
 SETTINGS_FILES = ("tenoke.ini", "ALI213.ini", "valve.ini", "SteamConfig.ini", "hlm.ini", "ds.ini",
-                  "steam_api.ini", "UniverseLAN.ini")
+                  "steam_api.ini", "UniverseLAN.ini", "configs.user.ini", "local_save.txt")
 _TRUE = ("1", "true", "yes")
 _SKIP_SECTIONS = {"steamachievements", "steam64", "steam"}
 _ACHIEVED_KEYS = ("achieved", "haveachieved", "unlocked", "earned")
@@ -355,6 +361,58 @@ def from_settings(cfg: Path) -> list[tuple[str, int, Path]]:
     return out
 
 
+def _appid_near(folder: Path) -> str | None:
+    """steam_appid.txt beside the emulator's dll or in its steam_settings."""
+    for candidate in (folder / "steam_appid.txt", folder / "steam_settings" / "steam_appid.txt"):
+        try:
+            text = candidate.read_text(encoding="utf-8", errors="replace").strip().split()[0]
+        except (OSError, IndexError):
+            continue
+        if text.isdigit():
+            return text
+    return None
+
+
+def _save_folders(base: Path, dll_dir: Path, emulator: str) -> list[tuple[str, int, Path]]:
+    """Goldberg and GSE keep one folder per app id under their save folder."""
+    out = []
+    try:
+        for e in os.scandir(base):
+            if e.name.isdigit() and e.is_dir(follow_symlinks=False):
+                out.append((emulator, int(e.name), Path(e.path)))
+    except OSError:
+        return out
+    appid = _appid_near(dll_dir)
+    if not out and appid and (base / "achievements.json").is_file():
+        out.append((emulator, int(appid), base))
+    return out
+
+
+def portable_saves(cfg: Path) -> list[tuple[str, int, Path]]:
+    """Goldberg and GSE saves moved out of their default folder by the game's
+    own settings: configs.user.ini in steam_settings, or local_save.txt."""
+    name = cfg.name.lower()
+    if name == "configs.user.ini" and cfg.parent.name.lower() == "steam_settings":
+        dll_dir = cfg.parent.parent
+        local = _get(_settings(cfg), "user::saves", "local_save_path")
+        folder_name = _get(_settings(cfg), "user::saves", "saves_folder_name")
+        if local:
+            base = Path(local) if Path(local).is_absolute() else dll_dir / local
+            return _save_folders(base, dll_dir, "GSE")
+        if folder_name and folder_name.lower() != "gse saves":
+            return _save_folders(windows_roots()["APPDATA"] / folder_name, dll_dir, "GSE")
+        return []
+    if name == "local_save.txt":
+        try:
+            folder = cfg.read_text(encoding="utf-8", errors="replace").strip().splitlines()[0].strip()
+        except (OSError, IndexError):
+            return []
+        if folder:
+            base = Path(folder) if Path(folder).is_absolute() else cfg.parent / folder
+            return _save_folders(base, cfg.parent, "Goldberg")
+    return []
+
+
 def settings_files(game_dir: Path, limit: int = 4000) -> list[Path]:
     """Emulator settings files in a game's folder, at most four levels down
     (Unity keeps them in <Game>_Data/Plugins/x86_64)."""
@@ -386,7 +444,9 @@ def game_files(game_dirs: list[Path]) -> list[tuple[str, int, Path]]:
     out = []
     for game_dir in game_dirs:
         for cfg in settings_files(game_dir):
-            for emulator, appid, folder in from_settings(cfg):
+            found_here = portable_saves(cfg) if cfg.name.lower() in ("configs.user.ini", "local_save.txt") \
+                else from_settings(cfg)
+            for emulator, appid, folder in found_here:
                 found = first_file(folder) if folder.is_dir() else None
                 if found is not None:
                     out.append((emulator, appid, found))

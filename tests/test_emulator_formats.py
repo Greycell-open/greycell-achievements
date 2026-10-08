@@ -159,3 +159,34 @@ def test_a_smartsteamemu_unlock_is_matched_through_its_crc(profile, roots):
     written = emulator.EmulatorWatcher(profile).poll()
     assert [e["achievement_id"] for e in written] == ["steam-31:second-landing"]
     assert reducer.is_unlocked(profile.state(), "steam-31:second-landing")
+
+
+GOLD = json.dumps({"ACH_A": {"earned": True, "earned_time": T}})
+
+
+def test_goldberg_and_gse_portable_saves_are_found(tmp_path, roots, monkeypatch):
+    monkeypatch.setattr(fmt, "windows_roots", lambda: roots)
+    # GSE with local_save_path relative to the dll; the game's definitions file must not count.
+    gse = tmp_path / "Games" / "Gse"
+    put(gse / "bin" / "steam_api64.dll", b"x")
+    put(gse / "bin" / "steam_settings" / "configs.user.ini", "[user::saves]\nlocal_save_path=./saves\n")
+    put(gse / "bin" / "steam_settings" / "achievements.json", json.dumps([{"name": "ACH_A", "displayName": "A"}]))
+    put(gse / "bin" / "saves" / "40" / "achievements.json", GOLD)
+    # GSE with a renamed saves folder under Roaming.
+    renamed = tmp_path / "Games" / "Renamed"
+    put(renamed / "steam_settings" / "configs.user.ini", "[user::saves]\nsaves_folder_name=EMPRESS Saves\n")
+    put(roots["APPDATA"] / "EMPRESS Saves" / "41" / "achievements.json", GOLD)
+    # Older Goldberg: local_save.txt beside the dll names the folder.
+    old = tmp_path / "Games" / "Old"
+    put(old / "local_save.txt", "MySaves\n")
+    put(old / "MySaves" / "42" / "achievements.json", GOLD)
+    # Default settings change nothing: the global folder is already read.
+    plain = tmp_path / "Games" / "Plain"
+    put(plain / "steam_settings" / "configs.user.ini", "[user::saves]\nsaves_folder_name=GSE Saves\n")
+    found = {(e, a) for e, a, _p, _f in emulator.achievement_files([gse, renamed, old, plain])}
+    assert found == {("GSE", 40), ("GSE", 41), ("Goldberg", 42)}
+
+
+def test_steam_settings_achievement_definitions_are_never_unlocks():
+    definitions = json.dumps([{"name": "ACH_A", "displayName": "A", "hidden": 0, "icon": "a.jpg"}])
+    assert fmt.parse(definitions.encode(), "json") == {}
