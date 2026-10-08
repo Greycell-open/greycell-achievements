@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.10
+- Xbox 360 games played in Xenia now get their achievements: the full list from the game's own profile file, and each one as you earn it, with its time. The app finds Xenia the first time it sees it running, or in Documents\Xenia.
+- Ubisoft games using LumaPlay now unlock their achievements, named from Ubisoft Connect's own cache on your computer. A game whose names are not on your computer is reported rather than shown with made-up names.
+- PS Vita games played in Vita3K and PS4 games played in shadPS4 now get their trophies too: the full list from the emulator's own files, and each trophy as you earn it, with its time. They appear with your other PlayStation games.

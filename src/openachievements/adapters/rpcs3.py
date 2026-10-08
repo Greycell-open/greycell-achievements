@@ -50,6 +50,10 @@ LOOK_EVERY = 60.0                   # seconds between looks for RPCS3 folders an
 MAGIC = 0x818F54AD
 TICKS_TO_UNIX = 62135596800         # seconds from 0001-01-01 to 1970-01-01
 GRADES = {"P": "platinum", "G": "gold", "S": "silver", "B": "bronze"}
+# Every local PlayStation emulator source. A list one of them installed may be
+# refreshed by another; one the PSN import installed is never replaced.
+LOCAL_SOURCES = frozenset({"rpcs3", "vita3k", "shadps4"})
+NP_ID = re.compile(r"[A-Za-z]{4}\d{5}_\d{2}")
 POINTS = {"bronze": 15, "silver": 30, "gold": 90, "platinum": 300}     # the PSN import's values
 
 METADATA = AdapterMetadata(
@@ -74,8 +78,11 @@ class Rpcs3Error(ValueError):
 
 # ---- the two files -------------------------------------------------------------------
 
-def parse_conf(raw: bytes) -> dict:
-    """TROPCONF.SFM -> {"np_id", "title", "trophies": [{id, name, detail, grade, hidden}]}."""
+def parse_conf(raw: bytes, np_id: str | None = None) -> dict:
+    """A trophy list (RPCS3's TROPCONF.SFM, Vita3K's TROP.SFM, shadPS4's
+    TROP.XML; all `<trophyconf>`) -> {"np_id", "title", "trophies": [{id,
+    name, detail, grade, hidden}]}. `np_id` is used when the file names none
+    (the folder it sits in is named after it)."""
     text = raw.decode("utf-8", errors="replace")
     start = text.find("<trophyconf")
     if start < 0:
@@ -84,8 +91,8 @@ def parse_conf(raw: bytes) -> dict:
         root = ET.fromstring(text[start:])                 # from the element: a signature comment can come first
     except ET.ParseError as exc:
         raise Rpcs3Error(f"trophy list is not valid XML ({exc})") from exc
-    np_id = (root.findtext("npcommid") or "").strip()
-    if not re.fullmatch(r"[A-Za-z]{4}\d{5}_\d{2}", np_id):
+    np_id = (root.findtext("npcommid") or "").strip() or (np_id or "")
+    if not NP_ID.fullmatch(np_id):
         raise Rpcs3Error(f"unexpected NP communication id {np_id!r}")
     trophies = []
     for t in root.iter("trophy"):
@@ -208,30 +215,32 @@ def _read(path: Path) -> bytes:
     return raw
 
 
-def plan_set(profile: Profile, conf: dict, earned: dict) -> list[dict]:
+def plan_set(profile: Profile, conf: dict, earned: dict, adapter: str = ADAPTER_ID,
+             adapter_version: str = ADAPTER_VERSION, platform: str = "PlayStation 3") -> list[dict]:
     """Events for one trophy set: the game, its list when it needs one, and
-    each earned trophy not yet unlocked."""
+    each earned trophy not yet unlocked. Shared by every local PlayStation
+    emulator (rpcs3, vita3k, shadps4), which pass their own adapter id."""
     from ..reducer import is_unlocked
     state = profile.state()
     game_id = game_id_for(conf["np_id"])
     make = lambda kind, payload, **kw: ev.make_event(kind, profile_id=profile.profile_id, device_id=profile.device_id,
-                                                     payload=payload, adapter=ADAPTER_ID,
-                                                     adapter_version=ADAPTER_VERSION, **kw)
+                                                     payload=payload, adapter=adapter,
+                                                     adapter_version=adapter_version, **kw)
     out = []
     if game_id not in state["games"]:
-        out.append(make("game.registered", {"title": conf["title"], "platform": "PlayStation 3",
+        out.append(make("game.registered", {"title": conf["title"], "platform": platform,
                                             "external_ids": {"psn": conf["np_id"]}}, game_id=game_id))
     rows = [{"id": f"t{t['id']}", "name": t["name"] or f"Trophy {t['id']}", "description": t["detail"],
              "hidden": t["hidden"], "points": POINTS.get(t["grade"], 0), "category": t["grade"]}
             for t in conf["trophies"]]
     installed = state["packs"].get(game_id)
-    mine = not installed or installed.get("removed") or installed.get("source") == ADAPTER_ID
+    mine = not installed or installed.get("removed") or installed.get("source") in LOCAL_SOURCES
     fields = ("name", "description", "hidden", "points")
     current = {k: {f: v.get(f) for f in fields} for k, v in (installed or {}).get("achievements", {}).items()}
     wanted = {r["id"]: {f: r.get(f) for f in fields} for r in rows}
     if mine and (not installed or installed.get("removed") or current != wanted):
         meta = {"id": game_id, "name": conf["title"], "game_ids": [game_id], "version": "1.0.0",
-                "source": ADAPTER_ID, "supported_adapters": [ADAPTER_ID, "psn"]}
+                "source": adapter, "supported_adapters": [adapter, "psn"]}
         try:
             description = validate_definitions(meta, rows)
         except PackError:
@@ -246,9 +255,9 @@ def plan_set(profile: Profile, conf: dict, earned: dict) -> list[dict]:
         if aid not in have or is_unlocked(state, f"{game_id}:{aid}"):
             continue
         occurred = utc_iso(when) if when and when <= time.time() + 60 else None
-        out.append(make("achievement.unlocked", {"provenance": "emulator", "mode": "rpcs3"},
+        out.append(make("achievement.unlocked", {"provenance": "emulator", "mode": adapter},
                         achievement_id=f"{game_id}:{aid}", game_id=game_id, occurred_at=occurred or ev.now(),
-                        external_event_id=f"{profile.profile_id}:rpcs3:{conf['np_id']}:{tid}"))
+                        external_event_id=f"{profile.profile_id}:{adapter}:{conf['np_id']}:{tid}"))
     return out
 
 
