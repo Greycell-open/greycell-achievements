@@ -644,6 +644,17 @@ class PackFetcher:
             self._queue.sort(key=lambda a: next((w for w, x in missing if x == a), ""), reverse=True)
         self._start()
 
+    def prioritise(self, appid: int) -> None:
+        """A game being played that has no list: ask for it first, now, even
+        if an earlier attempt this session found nothing (Steam may answer
+        now, or the earlier attempt failed). The caller limits how often."""
+        with self._lock:
+            if appid in self._queue:
+                self._queue.remove(appid)
+            self._queue.insert(0, appid)
+            self._tried.discard(appid)
+        self._start()
+
     def _start(self) -> None:
         import threading
         if self._queue and not (self._thread and self._thread.is_alive()):

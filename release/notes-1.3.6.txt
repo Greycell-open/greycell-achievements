@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.6
+- A game you are playing that shows no achievements goes to the front of the queue: its achievement list is fetched from Steam right away, and asked for again every half hour while it runs if Steam had nothing yet.
+- Games that keep their own achievements in their save now unlock on DRM-free copies: while you play, the app reads the save, and when the game names fields after its Steam achievements it writes the rules by itself, for the ones you have earned and the ones still to come.
+- Mini Airways: its achievements unlock from its save (the game records them as Ach_<name>).

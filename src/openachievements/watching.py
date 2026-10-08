@@ -63,6 +63,8 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
     last_lists = 0.0
     from .finder import AchievementFinder
     finder = AchievementFinder(profile)               # achievements for games recognised without any
+    asked_for: dict = {}                              # running game -> when its list was last asked for
+    rule_looks: dict = {}                             # game -> when its saves were last read for rules by name
     from . import rarity
     rare = rarity.RarityCrawler(profile)              # Steam's unlock percentages, one game at a time
     if steam_local.linked(profile):
@@ -119,6 +121,19 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
             global LIVE
             LIVE = {"playing": sorted(playing), "at": time.time()}
         except Exception as exc:  # noqa: BLE001 - the dashboard is a nicety; keep watching
+            complain(exc)
+        try:                                                  # being played with no achievements: fetch first
+            from .finder import ask_for_playing
+            for game_id in ask_for_playing(profile, LIVE["playing"], lists, finder, asked_for, time.monotonic()):
+                say(f"  {game_id} is being played without achievements: asking Steam first")
+        except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die
+            complain(exc)
+        try:                                                  # saves that name their achievements: rules by name
+            from .ruleseek import seek_playing
+            for found in seek_playing(profile, LIVE["playing"], rule_looks, time.monotonic()):
+                say(f"  {found['rules']} save rules for {found['game_id']} from {found['file']} "
+                    f"({found['seen']} achievements named in it)")
+        except Exception as exc:  # noqa: BLE001 - keep watching; report, do not die
             complain(exc)
         try:                                                  # the save keeper: copies, and saves put back
             for message in keeper.poll(set(LIVE["playing"])):

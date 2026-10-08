@@ -41,6 +41,8 @@ RETRY_AFTER = timedelta(days=1)          # Steam could not be reached, or it sai
 NOT_FOUND_AFTER = timedelta(days=7)      # no Steam game by that name, or one without achievements
 SETTINGS_KEY = "achievement_finder"
 MAX_CANDIDATES = 4                        # store hits sharing the name, each asked for its list
+PLAYING_RETRY = timedelta(hours=1)        # a game being played is looked up again this soon
+ASK_EVERY = 30 * 60                       # seconds between priority requests for one running game
 
 
 def candidates(game: dict) -> list[str]:
@@ -174,6 +176,25 @@ class AchievementFinder:
             self._thread = threading.Thread(target=self._run, daemon=True, name="achievement-finder")
             self._thread.start()
 
+    def prioritise(self, game_id: str) -> bool:
+        """A local game being played: look it up first, now, unless it was
+        looked up within the last hour. True when it was queued."""
+        seen = self._memory().get(game_id)
+        if seen:
+            try:
+                if self._now() - datetime.fromisoformat(seen["at"]) < PLAYING_RETRY:
+                    return False
+            except (KeyError, TypeError, ValueError):
+                pass
+        with self._lock:
+            if game_id in self._queue:
+                self._queue.remove(game_id)
+            self._queue.insert(0, game_id)
+        if not (self._thread and self._thread.is_alive()):
+            self._thread = threading.Thread(target=self._run, daemon=True, name="achievement-finder")
+            self._thread.start()
+        return True
+
     def _run(self) -> None:
         while True:
             with self._lock:
@@ -246,3 +267,47 @@ class AchievementFinder:
 def _default_index():
     folder = cat.default_dir()
     return cat.CatalogIndex(folder) if (folder / cat.PACKS_FILE).exists() else None
+
+
+def shown_game(games: dict, game_id: str) -> str:
+    seen = [game_id]
+    while True:
+        nxt = (games.get(seen[-1]) or {}).get("linked_to")
+        if not nxt or nxt not in games or nxt in seen:
+            return seen[-1]
+        seen.append(nxt)
+
+
+def has_achievements(state: dict, game_id: str) -> bool:
+    """True when the game as shown, or anything linked into it, has a list."""
+    games, packs = state["games"], state["packs"]
+    shown = shown_game(games, game_id)
+    members = [g for g in games if shown_game(games, g) == shown]
+    return any(p.get("achievements") and not p.get("removed") and set(p.get("game_ids") or [pid]) & set(members)
+               for pid, p in packs.items())
+
+
+def ask_for_playing(profile, playing, lists, finder, asked: dict, now: float) -> list[str]:
+    """Games running right now with no achievements go to the front of the
+    right fetcher: Steam games to the list fetcher, games known only by their
+    folder to the finder. Each running game is asked for at most every
+    ASK_EVERY seconds. Returns the games asked for."""
+    state = profile.state()
+    games = state["games"]
+    requested = []
+    for game_id in sorted(set(playing)):
+        if game_id not in games or has_achievements(state, game_id):
+            continue
+        if now - asked.get(game_id, -1e18) < ASK_EVERY:
+            continue
+        shown = shown_game(games, game_id)
+        if shown.startswith("steam-") and shown[6:].isdigit():
+            lists.prioritise(int(shown[6:]))
+        elif shown.startswith("local-"):
+            if not finder.prioritise(shown):
+                continue
+        else:
+            continue
+        asked[game_id] = now
+        requested.append(game_id)
+    return requested

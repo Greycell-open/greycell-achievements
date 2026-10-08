@@ -164,3 +164,82 @@ def test_the_dashboard_button_finds_a_local_games_achievements(profile, monkeypa
     assert r.status_code == 200, r.text
     assert r.json() == {"ok": True, "game_id": f"steam-{APPID}"}
     assert profile.state()["games"][game_id]["linked_to"] == f"steam-{APPID}"
+
+
+# ---- games being played get their list first -------------------------------------------
+
+class Recorder:
+    def __init__(self, result=True):
+        self.asked, self.result = [], result
+
+    def prioritise(self, ref):
+        self.asked.append(ref)
+        return self.result
+
+
+def test_a_running_steam_game_without_a_list_is_asked_for_first(profile):
+    profile.register_game(f"steam-{APPID}", TITLE, platform="PC", external_ids={"steam": APPID})
+    lists, find, asked = Recorder(), Recorder(), {}
+    assert fd.ask_for_playing(profile, [f"steam-{APPID}"], lists, find, asked, now=1000) == [f"steam-{APPID}"]
+    assert lists.asked == [APPID] and find.asked == []
+    # Still running a minute later: not asked again until ASK_EVERY has passed.
+    assert fd.ask_for_playing(profile, [f"steam-{APPID}"], lists, find, asked, now=1060) == []
+    assert fd.ask_for_playing(profile, [f"steam-{APPID}"], lists, find, asked, now=1000 + fd.ASK_EVERY) != []
+
+
+def test_a_running_game_with_a_list_is_left_alone(profile):
+    game_id = local_game(profile)
+    finder(profile, fake_steam([{"type": "app", "name": TITLE, "id": APPID}], {APPID: SCHEMA})).find_one(game_id)
+    lists, find = Recorder(), Recorder()
+    assert fd.ask_for_playing(profile, [game_id, f"steam-{APPID}"], lists, find, {}, now=0) == []
+    assert lists.asked == find.asked == []
+
+
+def test_a_running_local_game_goes_to_the_finder_first(profile):
+    game_id = local_game(profile)
+    lists, find = Recorder(), Recorder()
+    assert fd.ask_for_playing(profile, [game_id], lists, find, {}, now=0) == [game_id]
+    assert find.asked == [game_id] and lists.asked == []
+
+
+def test_a_local_game_linked_into_a_steam_game_without_a_list_asks_for_the_steam_list(profile):
+    game_id = local_game(profile)
+    profile.register_game(f"steam-{APPID}", TITLE, platform="PC", external_ids={"steam": APPID})
+    profile.link_games(game_id, f"steam-{APPID}")
+    lists, find = Recorder(), Recorder()
+    fd.ask_for_playing(profile, [game_id], lists, find, {}, now=0)
+    assert lists.asked == [APPID] and find.asked == []
+
+
+def test_the_finder_jumps_the_queue_but_not_more_than_hourly(profile):
+    game_id = local_game(profile)
+    f = finder(profile, fake_steam([], status=503))
+    f.find_one(game_id)                                       # looked up just now: unreachable
+    assert not f.prioritise(game_id)
+    later = finder(profile, fake_steam([{"type": "app", "name": TITLE, "id": APPID}], {APPID: SCHEMA}),
+                   now=NOW + timedelta(minutes=61))
+    assert later.prioritise(game_id)
+    later._thread.join(5)
+    assert profile.state()["games"][game_id]["linked_to"] == f"steam-{APPID}"
+
+
+def test_the_list_fetcher_retries_a_prioritised_game_it_already_tried(profile):
+    profile.register_game(f"steam-{APPID}", TITLE, platform="PC", external_ids={"steam": APPID})
+    answers = {"schema": None}
+
+    def fetch(url):
+        if "GetGameAchievements" in url:
+            rows = answers["schema"]
+            return 200, json.dumps({"response": {"achievements": rows} if rows else {}})
+        return 403, "{}"
+
+    lists = cat.PackFetcher(profile, fetch=fetch)
+    lists.want(None)
+    lists._thread.join(5)
+    assert f"steam-{APPID}" not in profile.state()["packs"]      # Steam had nothing then
+    answers["schema"] = SCHEMA
+    lists.want(None)                                               # a normal look does not try it again
+    assert not (lists._thread and lists._thread.is_alive())
+    lists.prioritise(APPID)                                        # being played: asked again, first
+    lists._thread.join(5)
+    assert len(profile.state()["packs"][f"steam-{APPID}"]["achievements"]) == 2

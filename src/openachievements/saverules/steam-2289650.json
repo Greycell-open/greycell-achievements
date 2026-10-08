@@ -1,0 +1,796 @@
+{
+ "game_id": "steam-2289650",
+ "title": "Mini Airways - ATC simulator",
+ "verified": "2026-10-07 against the owner's real save (TENOKE copy, SaveFile.es3, Easy Save 3): the game writes Ach_<Steam API name> = true and Ach_<name>_Date for each achievement it awards, whether or not Steam is reached. Seen: Map_LondonPass, GM_ContinuesTO5+, GM_ContinuesTO10+, AP_Time900+, Map_BarraLand. The other achievements use the same key with their own Steam API names.",
+ "saves": [
+  {
+   "id": "save",
+   "root": "LOCALLOW",
+   "path": "ContextCrossDivision/MiniAirways",
+   "pattern": "SaveFile.es3",
+   "format": "es3"
+  }
+ ],
+ "achievements": {
+  "Congested airspace": {
+   "why": "The game records this achievement as Ach_AP_Count20+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Count20+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Fast-tracked takeoff": {
+   "why": "The game records this achievement as Ach_AP_Count100+_NoApron in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Count100+_NoApron",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Big Arc": {
+   "why": "The game records this achievement as Ach_AP_Count100+_NoFasterTurn in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Count100+_NoFasterTurn",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "No Hold": {
+   "why": "The game records this achievement as Ach_AP_Count100+_NoHold in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Count100+_NoHold",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Radar Vectoring": {
+   "why": "The game records this achievement as Ach_AP_Count100+_NoNavigation in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Count100+_NoNavigation",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "You Can Always Go Around": {
+   "why": "The game records this achievement as Ach_AP_GoAround2+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_GoAround2+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Patience Test": {
+   "why": "The game records this achievement as Ach_AP_Time900+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_AP_Time900+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Air Force One": {
+   "why": "The game records this achievement as Ach_EV_AirForceOne in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_EV_AirForceOne",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Miracle on the Hudson": {
+   "why": "The game records this achievement as Ach_EV_AWE1549 in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_EV_AWE1549",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "C919 Test Flight": {
+   "why": "The game records this achievement as Ach_EV_MU919 in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_EV_MU919",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Inbound Priority I": {
+   "why": "The game records this achievement as Ach_GM_ContinuesLand5+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesLand5+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Inbound Priority II": {
+   "why": "The game records this achievement as Ach_GM_ContinuesLand10+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesLand10+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Inbound Priority III": {
+   "why": "The game records this achievement as Ach_GM_ContinuesLand15+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesLand15+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Outbound Priority I": {
+   "why": "The game records this achievement as Ach_GM_ContinuesTO5+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesTO5+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Outbound Priority II": {
+   "why": "The game records this achievement as Ach_GM_ContinuesTO10+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesTO10+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Outbound Priority III": {
+   "why": "The game records this achievement as Ach_GM_ContinuesTO15+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_ContinuesTO15+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Serial Thinker": {
+   "why": "The game records this achievement as Ach_GM_Day10+_NoPause in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_Day10+_NoPause",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Restricted What?": {
+   "why": "The game records this achievement as Ach_GM_EnterRestricted5+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_EnterRestricted5+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Queueing Up": {
+   "why": "The game records this achievement as Ach_GM_TOQueue8+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_TOQueue8+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "STARs & SIDs": {
+   "why": "The game records this achievement as Ach_GM_WPHdg5+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_GM_WPHdg5+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "1111": {
+   "why": "The game records this achievement as Ach_SC_Total1000+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_SC_Total1000+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "3115": {
+   "why": "The game records this achievement as Ach_SC_Total3115+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_SC_Total3115+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Amsterdam Map": {
+   "why": "The game records this achievement as Ach_Map_AmsterdamPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_AmsterdamPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Amsterdam Professional": {
+   "why": "The game records this achievement as Ach_Map_AmsterdamHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_AmsterdamHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Beijing Map": {
+   "why": "The game records this achievement as Ach_Map_BeijingPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_BeijingPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beijing Professional": {
+   "why": "The game records this achievement as Ach_Map_BeijingHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_BeijingHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Chengdu Map": {
+   "why": "The game records this achievement as Ach_Map_ChengduPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ChengduPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Chengdu Professional": {
+   "why": "The game records this achievement as Ach_Map_ChengduHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ChengduHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Dali Map": {
+   "why": "The game records this achievement as Ach_Map_DaliPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_DaliPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Dali Professional": {
+   "why": "The game records this achievement as Ach_Map_DaliHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_DaliHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Hong Kong Map": {
+   "why": "The game records this achievement as Ach_Map_HongKongPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_HongKongPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Hong Kong Professional": {
+   "why": "The game records this achievement as Ach_Map_HongKongHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_HongKongHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat London Map": {
+   "why": "The game records this achievement as Ach_Map_LondonPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_LondonPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "London Professional": {
+   "why": "The game records this achievement as Ach_Map_LondonHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_LondonHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat NewYork Map": {
+   "why": "The game records this achievement as Ach_Map_NewYorkPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_NewYorkPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "NewYork Professional": {
+   "why": "The game records this achievement as Ach_Map_NewYorkHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_NewYorkHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat San Francisco Map": {
+   "why": "The game records this achievement as Ach_Map_SanFranciscoPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SanFranciscoPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "San Francisco Professional": {
+   "why": "The game records this achievement as Ach_Map_SanFranciscoHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SanFranciscoHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Shanghai Map": {
+   "why": "The game records this achievement as Ach_Map_ShanghaiPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ShanghaiPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Shanghai Professional": {
+   "why": "The game records this achievement as Ach_Map_ShanghaiHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ShanghaiHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Sydney Map": {
+   "why": "The game records this achievement as Ach_Map_SydneyPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SydneyPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Sydney Professional": {
+   "why": "The game records this achievement as Ach_Map_SydneyHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SydneyHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Syracuse Map": {
+   "why": "The game records this achievement as Ach_Map_SyracusePass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SyracusePass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Syracuse Professional": {
+   "why": "The game records this achievement as Ach_Map_SyracuseHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_SyracuseHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Tokyo Map": {
+   "why": "The game records this achievement as Ach_Map_TokyoPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_TokyoPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Tokyo Professional": {
+   "why": "The game records this achievement as Ach_Map_TokyoHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_TokyoHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Vancouver Map": {
+   "why": "The game records this achievement as Ach_Map_VancouverPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_VancouverPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Vancouver Professional": {
+   "why": "The game records this achievement as Ach_Map_VancouverHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_VancouverHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Washington Map": {
+   "why": "The game records this achievement as Ach_Map_WashingtonPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_WashingtonPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Washington Professional": {
+   "why": "The game records this achievement as Ach_Map_WashingtonHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_WashingtonHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Zurich Map": {
+   "why": "The game records this achievement as Ach_Map_ZurichPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ZurichPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Zurich Professional": {
+   "why": "The game records this achievement as Ach_Map_ZurichHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_ZurichHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Santa Cruz de La Palma Map": {
+   "why": "The game records this achievement as Ach_Map_LaPalmaPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_LaPalmaPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Santa Cruz de La Palma Professional": {
+   "why": "The game records this achievement as Ach_Map_LaPalmaHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_LaPalmaHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Cheongju Map": {
+   "why": "The game records this achievement as Ach_Map_CheongjuPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_CheongjuPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Cheongju Professional": {
+   "why": "The game records this achievement as Ach_Map_CheongjuHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_CheongjuHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Doha Map": {
+   "why": "The game records this achievement as Ach_Map_DohaPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_DohaPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Doha Professional": {
+   "why": "The game records this achievement as Ach_Map_DohaHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_DohaHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Oklahoma Map": {
+   "why": "The game records this achievement as Ach_Map_OklahomaPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_OklahomaPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Oklahoma Professional": {
+   "why": "The game records this achievement as Ach_Map_OklahomaHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_OklahomaHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Indianapolis Map": {
+   "why": "The game records this achievement as Ach_Map_IndianapolisPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_IndianapolisPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Indianapolis Professional": {
+   "why": "The game records this achievement as Ach_Map_IndianapolisHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_IndianapolisHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Landing on water": {
+   "why": "The game records this achievement as Ach_Map_BarraLand in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_BarraLand",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Beat Harbin Map": {
+   "why": "The game records this achievement as Ach_Map_HarbinPass in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_HarbinPass",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  },
+  "Harbin Professional": {
+   "why": "The game records this achievement as Ach_Map_HarbinHighScore150+ in its own save.",
+   "rules": [
+    {
+     "signal": "save",
+     "save": "save",
+     "field": "Ach_Map_HarbinHighScore150+",
+     "op": "==",
+     "value": "true"
+    }
+   ]
+  }
+ }
+}
