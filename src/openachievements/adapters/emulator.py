@@ -1,7 +1,9 @@
 """Achievements a Steam emulator recorded on this computer.
 
-Some copies of Steam games run with a stand-in for Steam's own library (the
-CODEX, RUNE, Goldberg, GSE, EMPRESS and OnlineFix emulators). When such a
+Some copies of Steam games run with a stand-in for Steam's own library (a
+Steam emulator: CODEX, RUNE, OnlineFix, Goldberg, GSE, EMPRESS, SmartSteamEmu,
+CreamAPI, Reloaded, 3DM, SKIDROW, TENOKE, ALI213, Hoodlum, DARKSiDERS,
+UniverseLAN; where each keeps its file is in emulator_formats.py). When such a
 game unlocks an achievement it calls Steam's ordinary API, and the stand-in
 writes it to a small file on this computer: the game's own unlock, by Steam's
 internal name, with its time. This reads those files, read-only, from fixed
@@ -9,8 +11,11 @@ places, and records each unlock against the game's Steam achievement list.
 It works for every game without per-game rules, because the game itself says
 which achievement it unlocked.
 
-It never ships, installs, changes or looks for an emulator, and never touches
-a game's files: only the emulator's own achievement file is read.
+It never ships, installs or changes an emulator, and never writes anything.
+Most emulators keep their file in a fixed folder; a few (TENOKE, ALI213,
+Hoodlum, DARKSiDERS) keep it beside the game, and those are found from the
+emulator's settings file in the folder of a program the library already
+knows (owner, 2026-10-08: "cover every repacker").
 
 Steam's internal names are matched to the library's achievements by the
 pack's `external_id`, else through Steam's keyless schema (internal name and
@@ -20,9 +25,6 @@ on this computer (`rarity.names`). With rarity switched off and no
 """
 from __future__ import annotations
 
-import configparser
-import json
-import os
 import sys
 import time
 from dataclasses import dataclass, field
@@ -46,23 +48,16 @@ METADATA = AdapterMetadata(
     capabilities=("unlocks", "unlock-times", "any-game"),
     rate_limits="looks at a few fixed folders every few seconds; parses only files that changed",
     known_limitations=(
-        "only the emulators listed in LOCATIONS, in their default folders",
+        "only the emulators in emulator_formats, in their default folders or beside a known program",
         "matching needs Steam's achievement names for the game (rarity cache or the pack)",
     ),
     terms_or_policy_notes="Observation only. Never writes to, uploads, or copies a file.",
 )
 
-# (emulator, root, folder holding one folder per app id, file inside that folder, format)
-LOCATIONS = (
-    ("CODEX", "PUBLIC_DOCUMENTS", "Steam/CODEX", "achievements.ini", "ini"),
-    ("CODEX", "APPDATA", "Steam/CODEX", "achievements.ini", "ini"),
-    ("RUNE", "PUBLIC_DOCUMENTS", "Steam/RUNE", "achievements.ini", "ini"),
-    ("OnlineFix", "PUBLIC_DOCUMENTS", "OnlineFix", "Stats/Achievements.ini", "ini"),
-    ("Goldberg", "APPDATA", "Goldberg SteamEmu Saves", "achievements.json", "json"),
-    ("GSE", "APPDATA", "GSE Saves", "achievements.json", "json"),
-    ("EMPRESS", "APPDATA", "EMPRESS", "remote/{appid}/achievements.json", "json"),
-)
-_TRUE = ("1", "true", "yes")
+from . import emulator_formats as formats
+from .emulator_formats import LOCATIONS, parse  # noqa: F401 - the formats live there; kept importable here
+
+GAME_LOOK_EVERY = 60.0              # seconds between looks beside the library's own programs
 
 
 def _roots() -> list[dict[str, Path]]:
@@ -70,82 +65,40 @@ def _roots() -> list[dict[str, Path]]:
     prefix's (a Windows game on Linux keeps them inside its prefix)."""
     found = []
     if sys.platform == "win32":
-        public = os.environ.get("PUBLIC") or str(Path(os.environ.get("SystemDrive", "C:") + "\\") / "Users" / "Public")
-        appdata = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
-        found.append({"PUBLIC_DOCUMENTS": Path(public) / "Documents", "APPDATA": Path(appdata)})
+        found.append(formats.windows_roots())
     from . import savefile
     for user in savefile._proton_roots().values():
         found.append({"PUBLIC_DOCUMENTS": user.parent / "Public" / "Documents",
-                      "APPDATA": user / "AppData" / "Roaming"})
+                      "APPDATA": user / "AppData" / "Roaming", "LOCALAPPDATA": user / "AppData" / "Local",
+                      "DOCUMENTS": user / "Documents", "PROGRAMDATA": user.parent.parent / "ProgramData"})
     return found
 
 
-def achievement_files() -> list[tuple[str, int, Path, str]]:
-    """(emulator, app id, file, format) for every achievement file present."""
+def achievement_files(game_dirs: list[Path] | None = None) -> list[tuple[str, int, Path, str]]:
+    """(emulator, app id, file, format) for every achievement file present:
+    the fixed folders, then beside the given game folders."""
     out = []
     for roots in _roots():
-        for emulator, root, folder, inner, fmt in LOCATIONS:
-            base = roots.get(root)
-            if base is None:
-                continue
-            base = base.joinpath(*folder.split("/"))
-            try:
-                entries = [e for e in os.scandir(base) if e.name.isdigit() and e.is_dir(follow_symlinks=False)]
-            except OSError:
-                continue
-            for e in entries:
-                path = Path(e.path).joinpath(*inner.format(appid=e.name).split("/"))
-                if path.is_file():
-                    out.append((emulator, int(e.name), path, fmt))
-    return out
+        out.extend(formats.fixed_files(roots))
+    if game_dirs:
+        out.extend(formats.game_files(game_dirs))
+    seen, unique = set(), []
+    for emulator, appid, path in out:
+        if str(path) not in seen:
+            seen.add(str(path))
+            unique.append((emulator, appid, path, formats.file_format(path)))
+    return unique
 
 
-def _text(data: bytes) -> str:
-    if data[:2] in (b"\xff\xfe", b"\xfe\xff"):
-        return data.decode("utf-16", "replace")
-    return data.decode("utf-8", "replace").lstrip("﻿")
-
-
-def _when(value) -> float | None:
-    try:
-        t = float(str(value).strip())
-    except (TypeError, ValueError):
-        return None
-    return t if t > 0 else None
-
-
-def parse(data: bytes, fmt: str) -> dict[str, float | None]:
-    """Steam internal name -> unlock time (Unix seconds, or None when the file
-    kept none), for the achievements the file marks as unlocked."""
-    text = _text(data)
-    unlocked: dict[str, float | None] = {}
-    if fmt == "ini":
-        parser = configparser.ConfigParser(interpolation=None, strict=False)
-        try:
-            parser.read_string(text)
-        except configparser.Error as exc:
-            raise ValueError(f"not INI-style ({exc.__class__.__name__})") from None
-        for name in parser.sections():
-            if name.lower() == "steamachievements":
-                continue                                  # the emulator's own index of names
-            section = parser[name]
-            if str(section.get("achieved", "")).strip().lower() in _TRUE:
-                unlocked[name] = _when(section.get("unlocktime") or section.get("timestamp")
-                                       or section.get("unlock_time"))
-        return unlocked
-    try:
-        doc = json.loads(text)
-    except ValueError as exc:
-        raise ValueError(f"not JSON ({exc})") from None
-    items = doc.items() if isinstance(doc, dict) else (
-        (i.get("name"), i) for i in doc if isinstance(i, dict)) if isinstance(doc, list) else ()
-    for name, item in items:
-        if not name or not isinstance(item, dict):
-            continue
-        if any(item.get(k) in (True, 1, "1", "true") for k in ("earned", "achieved", "unlocked")):
-            unlocked[str(name)] = _when(item.get("earned_time") or item.get("unlock_time")
-                                        or item.get("UnlockTime") or item.get("time"))
-    return unlocked
+def game_dirs(profile: Profile) -> list[Path]:
+    """The folders of this computer's registered game programs."""
+    from .executable import local_installations
+    dirs = []
+    for inst in local_installations(profile):
+        folder = Path(inst["path"]).parent
+        if folder not in dirs:
+            dirs.append(folder)
+    return dirs
 
 
 def enabled(profile: Profile) -> bool:
@@ -173,6 +126,8 @@ class EmulatorWatcher:
     problems: dict = field(default_factory=dict)
     _reported: set = field(default_factory=set)
     _asked: dict = field(default_factory=dict)        # appid -> monotonic time Steam was asked for names
+    _game_files: list = field(default_factory=list)   # beside-the-game files, refreshed once a minute
+    _game_look: float = -1e18
 
     def new_problems(self) -> list[str]:
         fresh = [m for k, m in self.problems.items() if (k, m) not in self._reported]
@@ -183,7 +138,17 @@ class EmulatorWatcher:
         if not enabled(self.profile):
             return []
         written = []
-        for emulator, appid, path, fmt in achievement_files():
+        now = time.monotonic()
+        if now - self._game_look >= GAME_LOOK_EVERY:
+            self._game_look = now
+            try:
+                self._game_files = [(e, a, p, formats.file_format(p))
+                                    for e, a, p in formats.game_files(game_dirs(self.profile))]
+            except OSError:
+                self._game_files = []
+        fixed = achievement_files()
+        known = {str(f[2]) for f in fixed}
+        for emulator, appid, path, fmt in fixed + [f for f in self._game_files if str(f[2]) not in known]:
             try:
                 st = path.stat()
             except OSError:
@@ -264,6 +229,12 @@ class EmulatorWatcher:
             by_name.setdefault(_key(a.get("name")), []).append(aid)
         names = None
         written, complete = [], True
+        if any(k.startswith("crc:") for k in unlocked):          # SmartSteamEmu names achievements by CRC32
+            known_ids = set(by_external)
+            if len(known_ids) < len(pack["achievements"]):
+                known_ids |= set(self._names(appid))
+            by_crc = {formats.crc_name(n): n for n in known_ids}
+            unlocked = {by_crc.get(k, k): v for k, v in unlocked.items()}
         for api_name, when in sorted(unlocked.items(), key=lambda kv: kv[1] or 0):
             aid = by_external.get(api_name)
             if aid is None:

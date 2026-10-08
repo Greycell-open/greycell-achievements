@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.7
+- Achievements from every common Steam emulator: besides CODEX, RUNE, OnlineFix, Goldberg, GSE and EMPRESS, the app now reads SmartSteamEmu, CreamAPI, Reloaded, 3DM, SKIDROW, TENOKE, ALI213, Hoodlum, DARKSiDERS and UniverseLAN.
+- Emulators that keep their file beside the game (TENOKE, ALI213, Hoodlum, DARKSiDERS) are found from the game's own folder, for games the app already tracks.
