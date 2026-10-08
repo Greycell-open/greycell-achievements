@@ -11,6 +11,9 @@ places, and records each unlock against the game's Steam achievement list.
 It works for every game without per-game rules, because the game itself says
 which achievement it unlocked.
 
+PS3 trophies from RPCS3 are read by rpcs3.py, which shares this module's
+on/off switch.
+
 It never ships, installs or changes an emulator, and never writes anything.
 Most emulators keep their file in a fixed folder; a few (TENOKE, ALI213,
 Hoodlum, DARKSiDERS) keep it beside the game, and those are found from the

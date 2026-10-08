@@ -31,7 +31,7 @@ def _quiet(_message: str) -> None:
 
 def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], None] = _quiet,
                   stop: threading.Event | None = None) -> None:
-    from .adapters import (autodetect, emulator, executable, gog, psn, retroachievements, savefile, saverules,
+    from .adapters import (autodetect, emulator, executable, gog, psn, retroachievements, rpcs3, savefile, saverules,
                            steam_local, xbox)
     from .catalog import steam as cat
     from .notify import Notifier
@@ -54,7 +54,7 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
     procs = executable.Watcher(profile)
     detector = autodetect.AutoDetector(profile)
     watchers = [savefile.SaveWatcher(profile), emulator.EmulatorWatcher(profile), steam_local.SteamLocalWatcher(profile),
-                psn.PsnWatcher(profile),
+                psn.PsnWatcher(profile), rpcs3.Rpcs3Watcher(profile),
                 xbox.XboxWatcher(profile), gog.GogWatcher(profile),
                 retroachievements.RaWatcher(profile)]
     from .savekeeper import KeeperWatcher

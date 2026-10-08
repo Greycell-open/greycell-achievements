@@ -1,0 +1,2 @@
+Greycell Achievements 1.3.9
+- PlayStation 3 games played in RPCS3 now get their trophies: the full trophy list from the game's own files, and each trophy as you earn it, with its time. The app finds RPCS3 the first time it sees it running.
