@@ -1,4 +1,6 @@
 """The Linux tray icon's answers to the desktop, without a bus."""
+import pytest
+
 from openachievements import tray_linux as tl
 
 
@@ -71,7 +73,7 @@ def test_unknown_calls_and_paths_are_refused_and_introspection_answers():
 
 
 def test_the_icon_is_argb_in_network_order(tmp_path):
-    from PIL import Image
+    Image = pytest.importorskip("PIL.Image")          # bundled only in the Linux build
     path = tmp_path / "icon.png"
     Image.new("RGBA", (4, 4), (10, 20, 30, 255)).save(path)
     size, _h, data = tl.pixmaps(path, sizes=(2,))[0]
