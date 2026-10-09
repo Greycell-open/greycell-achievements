@@ -292,6 +292,9 @@ def plan_title(profile: Profile, state: dict, known: set, link: dict, title: dic
              "description": a.get("description") or a.get("lockedDescription") or "",
              "hidden": bool(a.get("isSecret")), "points": _gamerscore(a), "icon": _icon(a)}
             for a in achievements if str(a.get("id", "")).isdigit()]
+    from .. import rarity                                 # v2 answers carry rarity; Xbox 360 titles do not
+    rarity.keep(game_id, [(f"a{a['id']}", a.get("name"), (a.get("rarity") or {}).get("currentPercentage"))
+                          for a in achievements if str(a.get("id", "")).isdigit()])
     installed = state["packs"].get(game_id)
     fields = ("name", "description", "hidden", "points", "icon")
     current = {k: {f: v.get(f) for f in fields} for k, v in (installed or {}).get("achievements", {}).items()}

@@ -226,6 +226,10 @@ def plan_title(profile: Profile, state: dict, known: set, link: dict, title: dic
              "description": t.get("trophyDetail") or "", "hidden": bool(t.get("trophyHidden")),
              "points": POINTS.get(t.get("trophyType"), 0), "category": t.get("trophyType") or None,
              "icon": t.get("trophyIconUrl") or None} for t in trophies if "trophyId" in t]
+    from .. import rarity                                 # the earned answer carries each trophy's rate
+    names = {t.get("trophyId"): t.get("trophyName") for t in trophies}
+    rarity.keep(game_id, [(f"t{t['trophyId']}", names.get(t["trophyId"]), t.get("trophyEarnedRate"))
+                          for t in earned if "trophyId" in t])
     installed = state["packs"].get(game_id)
     fields = ("name", "description", "hidden", "points", "icon")
     current = {k: {f: v.get(f) for f in fields} for k, v in (installed or {}).get("achievements", {}).items()}

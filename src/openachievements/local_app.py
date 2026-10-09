@@ -187,6 +187,21 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
     def library():
         return profile.library()
 
+    rarest_cache: dict = {}
+
+    @app.get("/v1/local/rarest")
+    def rarest():
+        """Worked out again only when the library or the rarity cache changed:
+        ranking every unlock takes a couple of seconds on a big library."""
+        from . import rarity
+        try:
+            stamp = (repr(profile.log.signature()), rarity.cache_dir().stat().st_mtime_ns)
+        except OSError:
+            stamp = (repr(profile.log.signature()), None)
+        if rarest_cache.get("stamp") != stamp:
+            rarest_cache.update(stamp=stamp, rows=rarity.rarest(profile))
+        return {"rarest": rarest_cache["rows"]}
+
     @app.get("/v1/local/xbox")
     def xbox_status():
         return xbox_adapter.status(profile)

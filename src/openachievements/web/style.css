@@ -203,6 +203,8 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
 /* Dashboard: now playing and recent unlocks, kept live by v1/local/pulse */
 .dash { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 12px; margin-bottom: 14px; align-items: start; }
 @media (max-width: 760px) { .dash { grid-template-columns: 1fr; } }
+.dash-panel.wide { grid-column: 1 / -1; }
+.rarest li.rare .aname { background: linear-gradient(90deg, #e5e4e2, #b8c6db); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .dash-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; min-width: 0; }
 .dash-panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
 .live { font-size: 10px; letter-spacing: .06em; color: var(--ok); border: 1px solid rgba(52, 211, 153, .45); border-radius: 99px; padding: 0 7px; }

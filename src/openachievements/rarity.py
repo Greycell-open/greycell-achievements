@@ -8,7 +8,10 @@ per Steam app, refreshed weekly, and never written to events or synced.
 
 RetroAchievements games (ra-<id>) get theirs from the RetroAchievements sync,
 which already receives each achievement's award count and the game's player
-count (store()): no extra request.
+count (store()): no extra request. PlayStation (each earned-trophies answer
+carries trophyEarnedRate), Xbox (rarity.currentPercentage, not for Xbox 360
+titles) and GOG (each achievement's rarity) keep theirs the same way, from
+what their sync already received (keep()).
 
 Two ways a Steam game's rarity arrives:
   - RarityCrawler, part of the watcher: one Steam game of the library at a
@@ -69,6 +72,26 @@ def store(game_id: str, rows: list[tuple[str, str, float]], folder: Path | None 
     data = _tables(rows)
     data["fetched"] = time.time() if now is None else now
     write_json_atomic(_file(game_id, folder), data)
+
+
+def keep(game_id: str, rows: list[tuple[str, str, object]], folder: Path | None = None) -> int:
+    """store() for a sync's own answers: rows whose percentage is missing or
+    not a number between 0 and 100 are left out; never fails the sync."""
+    clean = []
+    for stable, name, value in rows:
+        try:
+            pct = float(value)
+        except (TypeError, ValueError):
+            continue
+        if name and 0.0 <= pct <= 100.0:
+            clean.append((str(stable), str(name), pct))
+    if not clean:
+        return 0
+    try:
+        store(game_id, clean, folder)
+    except OSError:
+        return 0
+    return len(clean)
 
 
 def _default_fetch(url: str) -> tuple[int, str]:
@@ -207,3 +230,33 @@ class RarityCrawler:
         if not fresh_after(fetch, appid, self.http, self.folder):
             self._tried[appid] = now                 # move on to the next game instead of asking again
         return appid
+
+
+def rarest(profile, limit: int = 8, folder: Path | None = None) -> list[dict]:
+    """The player's unlocked achievements fewest players have, from the cache
+    only (no request): what the dashboard's Rarest unlocks shelf shows."""
+    state = profile.state()
+    tables: dict[str, dict | None] = {}                 # each game's file read once
+    out = []
+    for game in profile.library()["games"]:
+        for a in game["achievements"]:
+            if not a["unlocked"]:
+                continue
+            if a["pack_id"] not in tables:
+                tables[a["pack_id"]] = _load(a["pack_id"], folder)
+            data = tables[a["pack_id"]]
+            if not data:
+                continue
+            definition = ((state["packs"].get(a["pack_id"]) or {}).get("achievements") or {}).get(a["id"]) or {}
+            stable = definition.get("external_id")
+            value = (data.get("by_id") or {}).get(str(stable)) if stable not in (None, "") else None
+            if value is None:
+                value = (data.get("by_name") or {}).get(_key(definition.get("name") or a["name"]))
+            pct = float(value) if value is not None else None
+            if pct is not None:
+                out.append({"game_id": game["game_id"], "title": game.get("title") or game["game_id"],
+                            "key": a["key"], "name": a["name"], "icon": a.get("icon"), "percent": round(pct, 2),
+                            "unlocked_at": a["unlocked_at"]})
+    out.sort(key=lambda r: (r["percent"], r["unlocked_at"] or ""))
+    return out[:limit]
+

@@ -185,6 +185,10 @@ def plan_game(profile: Profile, state: dict, known: set, link: dict, item: dict,
         rows.append({"id": f"a{info['id']}", "name": (info.get("name") or "Achievement")[:120],
                      "description": (info.get("description") or "")[:500], "hidden": not info.get("visible", True),
                      "points": 0, "icon": info.get("imageUrlUnlocked") or info.get("imageUrlLocked") or None})
+    from .. import rarity                                 # each achievement carries its rarity
+    rarity.keep(game_id, [(f"a{(a.get('achievement') or {}).get('id')}", (a.get("achievement") or {}).get("name"),
+                           (a.get("achievement") or {}).get("rarity")) for a in achievements
+                          if (a.get("achievement") or {}).get("id")])
     installed = state["packs"].get(game_id)
     fields = ("name", "description", "hidden", "points", "icon")
     current = {k: {f: v.get(f) for f in fields} for k, v in (installed or {}).get("achievements", {}).items()}

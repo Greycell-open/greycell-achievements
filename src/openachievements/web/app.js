@@ -632,6 +632,20 @@
         (src ? `<span class="src">${esc(src)}</span>` : "") +
         `<time datetime="${esc(a.unlocked_at)}">${esc(since(a.unlocked_at))}</time></li>`;
     }).join("") || `<li class="dash-empty">No unlocks yet. They appear here the moment a game records one.</li>`;
+    renderRarest();
+  }
+
+  // The fewest players have these: from the rarity this computer already knows.
+  async function renderRarest() {
+    let r;
+    try { r = await api("v1/local/rarest"); } catch (err) { return; }
+    const rows = r.rarest || [];
+    $("rarestPanel").hidden = !rows.length;
+    const pct = (p) => p < 0.1 ? "<0.1%" : p < 10 ? `${p.toFixed(1)}%` : `${Math.round(p)}%`;
+    $("rarestUnlocks").innerHTML = rows.map((x) => `<li data-game="${esc(x.game_id)}"${x.percent < 5 ? ' class="rare"' : ""}>` +
+      `<span class="aname">${esc(x.name)}</span><span class="gname">${esc(x.title)}</span>` +
+      `<span class="src" title="Share of players who have it">${esc(pct(x.percent))}</span>` +
+      (x.unlocked_at ? `<time datetime="${esc(x.unlocked_at)}">${esc(since(x.unlocked_at))}</time>` : "") + `</li>`).join("");
   }
 
   // Account syncs run in the background watcher; this bar only shows them, so
