@@ -30,7 +30,7 @@ from pathlib import Path
 from .. import steamfiles as sf
 from ..catalog import steam as cat
 from ..profile import Profile, ProfileError
-from . import executable, savefile, stores
+from . import engine_saves, executable, savefile, stores
 
 # Words that name an edition or a release, not the game.
 _NOISE = re.compile(r"\b(definitive|deluxe|ultimate|complete|goty|game of the year|remastered|enhanced|"
@@ -474,6 +474,48 @@ class AutoDetector:
         appids = {int(g[6:]) for g in games if g.startswith("steam-") and g[6:].isdigit()}
         for appid, folders in stores.steam_cloud(sf.steam_dir(), appids).items():
             note_store_saves(self.profile, f"steam-{appid}", folders)
+        added += self.import_itch_playtime()
+        return added
+
+    def import_itch_playtime(self) -> list[dict]:
+        """Hours the itch app recorded, for every itch game played on this
+        computer: the game joins the library (the same id recognition gives
+        it) and keeps the larger of itch's total and the sessions seen here."""
+        added = []
+        for played in stores.itch_played():
+            inst = played["install"]
+            ids = self._matcher.by_name.get(normalise(inst.title)) if self._matcher else None
+            ident = next(iter(ids)) if ids and len(ids) == 1 else None
+            if ident and ident[0] == "steam":
+                game_id = f"steam-{ident[1]}"
+            elif ident:
+                game_id = ident[1]
+            else:
+                game_id = stores.game_id(inst)
+            games = self.profile.state()["games"]
+            try:
+                if game_id not in games:
+                    if ident and ident[0] == "steam":
+                        if self._index is not None and self._index.get(ident[1]):
+                            cat.add_to_profile(self.profile, self._index, ident[1])
+                        else:
+                            self.profile.register_game(game_id, inst.title, platform=stores.PLATFORMS["itch"],
+                                                       external_ids={"steam": ident[1]})
+                    else:
+                        self.profile.register_game(game_id, inst.title, platform=stores.PLATFORMS["itch"],
+                                                   external_ids={"itch": int(inst.ref) if inst.ref.isdigit()
+                                                                 else inst.ref})
+                    added.append({"game_id": game_id, "folder": inst.folder})
+                game = self.profile.state()["games"][game_id]
+                fields = {}
+                if played["minutes"] > (game.get("playtime_minutes") or 0):
+                    fields["playtime_minutes"] = played["minutes"]
+                if played["last_played"] and played["last_played"] > (game.get("last_played") or ""):
+                    fields["last_played"] = played["last_played"]
+                if fields:
+                    self.profile.record("game.metadata_updated", fields, game_id=game_id, adapter="itch")
+            except (ProfileError, cat.CatalogError, OSError, ValueError):
+                continue
         return added
 
     def poll(self, running: set[str] | None = None) -> list[dict]:
@@ -544,7 +586,9 @@ class AutoDetector:
         if Path(path).is_file():
             executable.register(self.profile, game_id, Path(path), source="detected")
         saves = find_save_folders(game.get("title") or game_id)
-        exact = stores.unreal_saves(path, savefile.root_folder("LOCALAPPDATA"))
+        # Engines that pick their own save folder (Unreal, Godot, Ren'Py): exact, first.
+        exact = engine_saves.exact_saves(path, [game.get("title") or "", folder_title(path) or ""],
+                                         savefile.root_folder("LOCALAPPDATA"))
         unity = unity_info(path)
         if unity:                                   # the engine says exactly where: first
             low = savefile.root_folder("LOCALLOW")

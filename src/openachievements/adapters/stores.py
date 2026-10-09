@@ -198,6 +198,57 @@ def itch_installs(db: Path | None = None) -> list[Install]:
     return out
 
 
+def _itch_time(value) -> str | None:
+    """butler writes times as RFC 3339 with nanoseconds; events take
+    `YYYY-MM-DDTHH:MM:SSZ` in UTC."""
+    from datetime import datetime, timezone
+    m = re.match(r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(Z|[+-]\d{2}:?\d{2})?", str(value or ""))
+    if not m:
+        return None
+    zone = m.group(3) or "Z"
+    zone = "+00:00" if zone == "Z" else (zone if ":" in zone else zone[:3] + ":" + zone[3:])
+    try:
+        when = datetime.fromisoformat(f"{m.group(1)}T{m.group(2)}{zone}")
+    except ValueError:
+        return None
+    return when.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def itch_played(db: Path | None = None) -> list[dict]:
+    """Games the itch app has run on this computer: {"install", "minutes",
+    "last_played"}, from the same caves as itch_installs (seconds_run, else
+    local_seconds_run; local_last_run_at, else last_touched_at)."""
+    db = itch_db() if db is None else db
+    if db is None or not db.is_file():
+        return []
+    query = ("SELECT c.game_id, c.seconds_run, c.local_seconds_run, c.local_last_run_at, c.last_touched_at "
+             "FROM caves c")
+    rows = None
+    for mode in ("ro", "ro&immutable=1"):
+        try:
+            con = sqlite3.connect(f"{db.as_uri()}?mode={mode}", uri=True, timeout=1)
+            try:
+                rows = con.execute(query).fetchall()
+            finally:
+                con.close()
+            break
+        except (sqlite3.Error, ValueError):
+            continue
+    installs = {i.ref: i for i in itch_installs(db)}
+    best: dict[str, dict] = {}
+    for game, total, local, last_run, touched in rows or []:
+        inst = installs.get(str(game))
+        seconds = max(int(total or 0), int(local or 0))
+        if inst is None or seconds <= 0:
+            continue
+        when = _itch_time(last_run) or _itch_time(touched)
+        have = best.setdefault(str(game), {"install": inst, "minutes": 0, "last_played": None})
+        have["minutes"] = max(have["minutes"], seconds // 60)
+        if when and when > (have["last_played"] or ""):
+            have["last_played"] = when
+    return [p for p in best.values() if p["minutes"] > 0]
+
+
 # ---- the registry: Ubisoft's installs, and uninstall entries (Battle.net, EA) -------------
 
 def _registry():
@@ -433,20 +484,3 @@ def save_folders(inst: Install, connect: Path | None = None, local_appdata: Path
         return xbox_saves(local_appdata, inst.package)
     return []
 
-
-def unreal_saves(path: str, local_appdata: Path | None) -> list[str]:
-    """An Unreal game's own save folder, from its project name: the folder
-    above `Binaries` (`<Project>/Binaries/Win64/<Project>-Win64-Shipping.exe`).
-    Saves go to `%LOCALAPPDATA%/<Project>/Saved/SaveGames`, or beside the game."""
-    try:
-        p = Path(os.path.realpath(path))           # the process list gives lower case; the disk has the real name
-    except OSError:
-        p = Path(path)
-    binaries = next((a for a in list(p.parents)[:3] if a.name.lower() == "binaries"), None)
-    if binaries is None:
-        return []
-    project = binaries.parent
-    places = [project / "Saved" / "SaveGames"]
-    if local_appdata is not None:
-        places.insert(0, local_appdata / project.name / "Saved" / "SaveGames")
-    return [str(f) for f in places if f.is_dir()]

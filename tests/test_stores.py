@@ -11,7 +11,7 @@ import pytest
 from openachievements import savekeeper
 from openachievements import steamfiles as sf
 from openachievements.adapters import autodetect as ad
-from openachievements.adapters import savefile, stores
+from openachievements.adapters import engine_saves, savefile, stores
 from openachievements.finder import AchievementFinder
 from test_autodetect import catalogue, detector, make_game  # noqa: F401 - catalogue is a fixture
 
@@ -285,14 +285,3 @@ def test_a_store_synced_save_is_kept_but_never_put_back_on_its_own(profile, monk
     keeper = watcher._keeper()
     keeper.restore("steam-367520", keeper.snapshots("steam-367520")[0]["id"])     # the player still can
     assert save.read_bytes() == b"progress"
-
-
-def test_unreal_saves_beside_the_game_are_found_when_appdata_has_none(tmp_path):
-    exe = tmp_path / "G" / "Proj" / "Binaries" / "Win64" / "Proj-Win64-Shipping.exe"
-    exe.parent.mkdir(parents=True)
-    beside = tmp_path / "G" / "Proj" / "Saved" / "SaveGames"
-    beside.mkdir(parents=True)
-    assert stores.unreal_saves(str(exe), tmp_path / "nothing") == [str(beside)]
-    assert stores.unreal_saves(str(tmp_path / "G" / "game.exe"), tmp_path) == []
-    monkey_root = savefile.root_folder("LOCALAPPDATA")                     # untouched by the above
-    assert monkey_root is None or isinstance(monkey_root, Path)

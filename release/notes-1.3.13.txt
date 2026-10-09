@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.13
+- Godot games now have their saves kept: the app finds the game's own save folder (in AppData, Godot, app_userdata), where it was missed before.
+- Ren'Py games too: their save folder is found from the game's own setting, or by its name, and the saves inside the game folder are kept as well.
+- Hours you played itch.io games in the itch app now show in your library, and those games join it even if you have not run them since installing Greycell Achievements.
