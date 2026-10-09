@@ -9,7 +9,7 @@ registered so play time counts, and folders that look like its saves are
 noted, by name only.
 
 Games other stores installed (Epic, EA app, Ubisoft Connect, Battle.net,
-Amazon, the Xbox app) are named from that store's own install records
+Amazon, the Xbox app, itch.io) are named from that store's own install records
 (adapters/stores.py) rather than guessed from their folder, and the save
 folders those stores keep (Ubisoft Connect's savegames, the Xbox app's wgs,
 Steam Cloud's userdata) are noted with them.
@@ -513,7 +513,7 @@ class AutoDetector:
         if inst is not None:
             game_id = ref
             if game_id not in state["games"]:
-                ext = int(inst.ref) if inst.store == "ubisoft" and inst.ref.isdigit() else (
+                ext = int(inst.ref) if inst.store in ("ubisoft", "itch") and inst.ref.isdigit() else (
                     int(inst.ref, 16) if inst.store == "xbox" else inst.ref)
                 self.profile.register_game(game_id, inst.title, platform=stores.PLATFORMS.get(inst.store, "PC"),
                                            external_ids={inst.store: ext})

@@ -64,6 +64,55 @@ def test_amazon_installs_come_from_its_database_read_only(tmp_path):
     assert stores.amazon_installs(tmp_path / "junk.sqlite") == []
 
 
+def itch_db(path: Path, caves: list, games: list, locations: list) -> Path:
+    """butler.db reduced to the columns read, named as butler's models give them."""
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE games (id INTEGER PRIMARY KEY, title TEXT, classification TEXT)")
+    con.execute("CREATE TABLE install_locations (id TEXT PRIMARY KEY, path TEXT)")
+    con.execute("CREATE TABLE caves (id TEXT PRIMARY KEY, game_id INTEGER, install_location_id TEXT, "
+                "install_folder_name TEXT, custom_install_folder TEXT, seconds_run INTEGER)")
+    con.executemany("INSERT INTO games VALUES (?, ?, ?)", games)
+    con.executemany("INSERT INTO install_locations VALUES (?, ?)", locations)
+    con.executemany("INSERT INTO caves VALUES (?, ?, ?, ?, ?, 0)", caves)
+    con.commit()
+    con.close()
+    return path
+
+
+def test_itch_installs_come_from_the_itch_apps_database_read_only(tmp_path):
+    lib = tmp_path / "itch-apps"
+    db = itch_db(tmp_path / "butler.db",
+                 caves=[("c1", 1234, "loc1", "a-short-hike", None),
+                        ("c2", 99, "loc1", "pixel-tool", None),
+                        ("c3", 77, None, None, str(tmp_path / "Elsewhere" / "Celeste Classic")),
+                        ("c4", 55, "loc1", "ost", None),
+                        ("c5", 1234, "loc1", "a-short-hike", None)],          # the same install twice
+                 games=[(1234, "A Short Hike", "game"), (99, "Pixel Tool", "tool"),
+                        (77, "Celeste Classic", None), (55, "Hike OST", "soundtrack")],
+                 locations=[("loc1", str(lib))])
+    before = db.read_bytes()
+    found = [(i.ref, i.title, i.folder) for i in stores.itch_installs(db)]
+    assert found == [("1234", "A Short Hike", str(lib / "a-short-hike")),
+                     ("77", "Celeste Classic", str(tmp_path / "Elsewhere" / "Celeste Classic"))]
+    assert db.read_bytes() == before
+    assert stores.itch_installs(tmp_path / "none.db") == []
+    (tmp_path / "junk.db").write_bytes(b"not sqlite")
+    assert stores.itch_installs(tmp_path / "junk.db") == []
+
+
+def test_an_itch_game_is_recognised_without_engine_files(profile, catalogue, monkeypatch, tmp_path):
+    lib = tmp_path / "itch-apps"
+    exe = make_game(lib, "a-short-hike/AShortHike/AShortHike.exe")             # one folder down, no engine files
+    db = itch_db(tmp_path / "butler.db", caves=[("c1", 1234, "loc1", "a-short-hike", None)],
+                 games=[(1234, "A Short Hike", "game")], locations=[("loc1", str(lib))])
+    found = store_detector(profile, catalogue, monkeypatch, tmp_path, stores.itch_installs(db)).poll({exe})
+    assert found[0]["game_id"] == "itch-1234"
+    game = profile.state()["games"]["itch-1234"]
+    assert game["title"] == "A Short Hike" and game["platform"] == "PC (itch.io)"
+    assert game["external_ids"] == {"itch": 1234} and len(game["installations"]) == 1
+    assert AchievementFinder(profile).waiting() == ["itch-1234"]                # Steam sells it: looked up there
+
+
 def test_battlenet_and_ea_games_come_from_their_uninstall_entries(tmp_path):
     bf = tmp_path / "EA Games" / "Battlefield 1"
     (bf / "__Installer").mkdir(parents=True)

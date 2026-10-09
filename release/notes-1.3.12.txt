@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.12
+- Games installed with the itch.io app are now recognised by their itch.io title, straight from the itch app's own records, even when the game has none of the usual engine files beside it. Tools, soundtracks, books and asset packs from itch.io are left out.
+- Their saves are kept like every other game's, and an itch.io game that Steam also sells gets its achievement list from Steam.

@@ -21,6 +21,13 @@ the game exactly:
 - Xbox app (PC Game Pass): `MicrosoftGame.config` in the game's Content
   folder: Identity Name, TitleId (8 hex digits), ShellVisuals
   DefaultDisplayName.
+- itch.io app: its database, `<itch user folder>/db/butler.db` (%APPDATA%/itch,
+  ~/.config/itch, Application Support/itch), opened read-only: table `caves`
+  (one per install: game_id, install_location_id, install_folder_name, or
+  custom_install_folder), `install_locations` (id, path) and `games` (id,
+  title, classification), named as butler's models and its ORM (hades:
+  snake_case, plural) give them. Only classification "game" (or none) counts:
+  tools, soundtracks, books and asset packs are not games.
 
 Saves those stores keep in their own place: Ubisoft Connect's
 `savegames/<user>/<app id>`, the Xbox app's `Packages/<package>_*/
@@ -44,9 +51,9 @@ from pathlib import Path
 MAX_RECORD_BYTES = 1024 * 1024
 # Stores whose games have no achievements of their own here: a catalogue title
 # with the same name gives them a list, else the achievement finder looks.
-FINDABLE = ("local-", "epic-", "ea-", "battlenet-", "amazon-")
+FINDABLE = ("local-", "epic-", "ea-", "battlenet-", "amazon-", "itch-")
 PLATFORMS = {"epic": "PC (Epic)", "ea": "PC (EA)", "ubisoft": "PC (Ubisoft)", "battlenet": "PC (Battle.net)",
-             "amazon": "PC (Amazon)", "xbox": "PC (Xbox)"}
+             "amazon": "PC (Amazon)", "xbox": "PC (Xbox)", "itch": "PC (itch.io)"}
 UNINSTALL_KEYS = (r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
                   r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall")
 _LAUNCHERS = ("ea app", "ea desktop", "origin", "battle.net", "ubisoft connect", "epic games launcher")
@@ -54,7 +61,7 @@ _LAUNCHERS = ("ea app", "ea desktop", "origin", "battle.net", "ubisoft connect",
 
 @dataclass(frozen=True)
 class Install:
-    store: str          # epic, ea, ubisoft, battlenet, amazon, xbox
+    store: str          # epic, ea, ubisoft, battlenet, amazon, xbox, itch
     ref: str            # the store's own id for the game
     title: str
     folder: str
@@ -147,6 +154,48 @@ def amazon_installs(db: Path | None = None) -> list[Install]:
     except (sqlite3.Error, ValueError):
         return []
     return [Install("amazon", str(i), _clean(t) or Path(d).name, str(d)) for i, d, t in rows if i and d]
+
+
+# ---- itch.io ----------------------------------------------------------------------------
+
+def itch_db() -> Path | None:
+    if sys.platform == "win32":
+        base = Path(os.environ["APPDATA"]) / "itch" if os.environ.get("APPDATA") else None
+    elif sys.platform == "darwin":
+        base = Path.home() / "Library" / "Application Support" / "itch"
+    else:
+        base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "itch"
+    return base / "db" / "butler.db" if base is not None else None
+
+
+def itch_installs(db: Path | None = None) -> list[Install]:
+    db = itch_db() if db is None else db
+    if db is None or not db.is_file():
+        return []
+    query = ("SELECT c.game_id, g.title, g.classification, c.custom_install_folder, l.path, c.install_folder_name "
+             "FROM caves c LEFT JOIN games g ON g.id = c.game_id "
+             "LEFT JOIN install_locations l ON l.id = c.install_location_id")
+    rows = None
+    # The itch app may hold the database open: read-only first, then as a
+    # file nothing is writing (no lock taken), which still never changes it.
+    for mode in ("ro", "ro&immutable=1"):
+        try:
+            con = sqlite3.connect(f"{db.as_uri()}?mode={mode}", uri=True, timeout=1)
+            try:
+                rows = con.execute(query).fetchall()
+            finally:
+                con.close()
+            break
+        except (sqlite3.Error, ValueError):
+            continue
+    out, seen = [], set()
+    for game, title, kind, custom, location, name in rows or []:
+        folder = custom or (str(Path(location) / name) if location and name else None)
+        if not game or not folder or (kind and kind != "game") or (game, folder) in seen:
+            continue
+        seen.add((game, folder))
+        out.append(Install("itch", str(game), _clean(title) or Path(folder).name, str(folder)))
+    return out
 
 
 # ---- the registry: Ubisoft's installs, and uninstall entries (Battle.net, EA) -------------
@@ -285,7 +334,7 @@ class StoreIndex:
 
 def everything() -> list[Install]:
     out = []
-    for reader in (epic_installs, amazon_installs, ubisoft_installs, registry_installs):
+    for reader in (epic_installs, amazon_installs, itch_installs, ubisoft_installs, registry_installs):
         try:
             out += reader()
         except Exception:  # noqa: BLE001 - one store's records being odd never stops the others
