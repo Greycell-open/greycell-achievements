@@ -474,6 +474,12 @@ class AutoDetector:
         appids = {int(g[6:]) for g in games if g.startswith("steam-") and g[6:].isdigit()}
         for appid, folders in stores.steam_cloud(sf.steam_dir(), appids).items():
             note_store_saves(self.profile, f"steam-{appid}", folders)
+        roaming = savefile.root_folder("APPDATA")          # repacks: Goldberg / GSE keep <appid>/remote
+        for base in ("Goldberg SteamEmu Saves", "GSE Saves"):
+            for appid in appids:
+                remote = roaming / base / str(appid) / "remote" if roaming is not None else None
+                if remote is not None and remote.is_dir() and stores._has_files(remote):
+                    note_store_saves(self.profile, f"steam-{appid}", [str(remote)])
         added += self.import_itch_playtime()
         return added
 

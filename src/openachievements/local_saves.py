@@ -13,6 +13,14 @@ class RestoreBody(BaseModel):
     snapshot: str | None = None
 
 
+class TransferBody(BaseModel):
+    to: str
+    snapshot: str | None = None             # a kept copy
+    folder: str | None = None               # or what a folder holds now
+    dry_run: bool = True
+    allow_newer: bool = False
+
+
 class KeeperBody(BaseModel):
     on: bool | None = None
     folder: str | None = None              # "" goes back to the profile's own folder
@@ -84,12 +92,20 @@ def add_routes(app, profile, check) -> None:
             fail(exc)
         return {"opened": True}
 
+    # A game's page shows it together with every game linked into it (a DRM-free
+    # copy linked into the Steam game): their save folders and kept copies too.
+    def members(game_id: str) -> list[str]:
+        from .savetransfer import group
+        return group(profile, game_id) if game_id in profile.state()["games"] else [game_id]
+
     @app.get("/v1/local/games/{game_id}/kept")
     def kept(game_id: str, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
-        snaps = savekeeper.Keeper(profile).snapshots(game_id)
-        folders = [str(f) for f in savekeeper.save_folders(profile).get(game_id, [])]
-        return {"on": savekeeper.enabled(profile), "folders": folders, "running": _running(profile, game_id),
+        keeper, known, ids = savekeeper.Keeper(profile), savekeeper.save_folders(profile), members(game_id)
+        snaps = sorted((s for g in ids for s in keeper.snapshots(g)), key=lambda s: s["taken_at"], reverse=True)
+        folders = list(dict.fromkeys(str(f) for g in ids for f in known.get(g, [])))
+        return {"on": savekeeper.enabled(profile), "folders": folders,
+                "running": any(_running(profile, g) for g in ids),
                 "snapshots": [{"id": s["id"], "taken_at": s["taken_at"], "reason": s.get("reason"),
                                "folder": s["folder"], "files": len(s["files"]),
                                "size": sum(f["size"] for f in s["files"].values())} for s in snaps]}
@@ -97,22 +113,56 @@ def add_routes(app, profile, check) -> None:
     @app.post("/v1/local/games/{game_id}/keep")
     def keep(game_id: str, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
-        folders = savekeeper.save_folders(profile).get(game_id) or []
-        if not folders:
+        known, keeper = savekeeper.save_folders(profile), savekeeper.Keeper(profile)
+        pairs = [(g, f) for g in members(game_id) for f in known.get(g) or []]
+        if not pairs:
             fail(ValueError("no save folder is known for this game yet"), 404)
-        keeper = savekeeper.Keeper(profile)
-        taken = [s for s in (keeper.take(game_id, Path(f), reason="asked") for f in folders) if s]
+        taken = [s for s in (keeper.take(g, Path(f), reason="asked") for g, f in pairs) if s]
         return {"taken": len(taken)}
 
     @app.post("/v1/local/games/{game_id}/restore")
     def restore(game_id: str, body: RestoreBody, x_oa_token: str | None = Header(default=None)):
         check(x_oa_token)
+        keeper, ids = savekeeper.Keeper(profile), members(game_id)
+        owner = next((g for g in ids if body.snapshot and any(s["id"] == body.snapshot for s in keeper.snapshots(g))),
+                     game_id)
         try:
-            plan = savekeeper.Keeper(profile).restore(game_id, body.snapshot, running=_running(profile, game_id))
+            plan = keeper.restore(owner, body.snapshot, running=any(_running(profile, g) for g in ids))
         except (savekeeper.KeeperError, OSError) as exc:
             fail(exc)
         return {"folder": plan["folder"], "written": len(plan["actions"]), "kept_before": plan["replaces_existing"],
                 "taken_at": plan["snapshot"]["taken_at"]}
+
+    @app.get("/v1/local/games/{game_id}/installs")
+    def game_installs(game_id: str, x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        from . import savetransfer
+        return {"installs": savetransfer.installs(profile, game_id),
+                "sources": savetransfer.sources(profile, game_id, limit=60),
+                "moves": savetransfer.history(profile, game_id)[:10]}
+
+    @app.post("/v1/local/games/{game_id}/transfer")
+    def game_transfer(game_id: str, body: TransferBody, x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        from . import savetransfer
+        try:
+            if body.dry_run:
+                return savetransfer.plan(profile, game_id, body.to, body.snapshot, body.folder)
+            running = any(_running(profile, g) for g in savetransfer.group(profile, game_id))
+            return savetransfer.transfer(profile, game_id, body.to, body.snapshot, body.folder, running=running,
+                                         allow_newer=body.allow_newer)
+        except (savekeeper.KeeperError, OSError) as exc:
+            fail(exc)
+
+    @app.post("/v1/local/games/{game_id}/transfer/{transfer_id}/undo")
+    def game_transfer_undo(game_id: str, transfer_id: str, x_oa_token: str | None = Header(default=None)):
+        check(x_oa_token)
+        from . import savetransfer
+        try:
+            running = any(_running(profile, g) for g in savetransfer.group(profile, game_id))
+            return savetransfer.undo(profile, game_id, transfer_id, running=running)
+        except (savekeeper.KeeperError, OSError) as exc:
+            fail(exc)
 
     @app.get("/v1/local/games/{game_id}/changes")
     def changes(game_id: str, x_oa_token: str | None = Header(default=None)):

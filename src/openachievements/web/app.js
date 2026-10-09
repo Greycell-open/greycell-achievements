@@ -370,7 +370,8 @@
       `<div class="row">` +
       (kept.folders.length ? `<button type="button" data-savekeep="1">Keep a copy now</button>` : "") +
       (n ? `<button type="button" data-saverestorelist="1">Restore\u2026</button>` : "") +
-      (n && g.total ? `<button type="button" data-savechanges="1">What changed</button>` : "") + `</div>` +
+      (n && g.total ? `<button type="button" data-savechanges="1">What changed</button>` : "") +
+      (n || kept.folders.length ? `<button type="button" data-savemove="1">Move to another install\u2026</button>` : "") + `</div>` +
       `<div class="saves-more" id="savesMore"></div><div class="saves-more" id="savesSuggest"></div>`;
     box.hidden = false;
     if (g.total && n) {
@@ -387,6 +388,7 @@
 
   function showRestoreList() {
     const k = saveView.kept;
+    $("savesMore").classList.remove("moving");
     $("savesMore").innerHTML = `<b>Put saves back</b><div class="muted">What is there now is kept first. Close the game before.</div>` +
       k.snapshots.map((sn) => `<div class="save-row"><span>${esc(fmtDate(sn.taken_at))} ` +
         `${esc(new Date(sn.taken_at).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }))} ` +
@@ -396,7 +398,65 @@
         `</span></span><button type="button" data-saverestore="${esc(sn.id)}">Restore</button></div>`).join("");
   }
 
+  // ---- moving saves between installs of the same game ----
+  const when = (iso) => iso ? `${fmtDate(iso)} ${new Date(iso).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" })}` : "";
+
+  async function showMove() {
+    const r = await api(`v1/local/games/${gid(saveView.id)}/installs`);
+    saveView.move = r;
+    const froms = r.installs.filter((p) => p.files).map((p) =>
+      `<option value="folder:${esc(p.folder)}">Now in ${esc(p.label)}: ${esc(p.folder)}</option>`).concat(
+      r.sources.map((sn) => `<option value="snap:${esc(sn.id)}">Kept copy of ${esc(when(sn.taken_at))} from ${esc(sn.folder)}</option>`));
+    const tos = r.installs.map((p, i) => `<option value="${i}">${esc(p.label)}: ${esc(p.folder)} ` +
+      `(${p.files ? `${p.files} file${p.files === 1 ? "" : "s"}, newest ${esc(when(p.newest))}` : "empty"})</option>`);
+    const moves = r.moves.map((m) => `<div class="save-row"><span>${esc(when(m.at))} to <code>${esc(m.to)}</code>` +
+      (m.undone ? ` <span class="muted">(undone)</span>` : "") + `</span>` +
+      (m.undone ? "" : `<button type="button" data-saveundo="${esc(m.id)}">Undo</button>`) + `</div>`).join("");
+    $("savesMore").classList.add("moving");
+    $("savesMore").innerHTML = `<b>Move saves to another install</b>` +
+      `<div class="muted">For a game you have in more than one place, like a DRM-free copy and the Steam copy. ` +
+      `What the destination holds is kept first, and a move can be undone until the game saves over it. Close the game before.</div>` +
+      (r.installs.length < 2 && !r.sources.length ? `<div>Only one place is known for this game's saves so far.</div>` :
+        `<label class="move-field">From <select id="moveFrom">${froms.join("")}</select></label>` +
+        `<label class="move-field">To <select id="moveTo">${tos.join("")}</select></label>` +
+        `<div class="row"><button type="button" data-savemovecheck="1">Check</button></div><div id="movePlan"></div>`) +
+      (moves ? `<b>Recent moves</b>${moves}` : "");
+  }
+
+  function moveBody(dryRun, allowNewer) {
+    const from = $("moveFrom").value, to = saveView.move.installs[Number($("moveTo").value)].folder;
+    const body = { to, dry_run: dryRun, allow_newer: !!allowNewer };
+    if (from.startsWith("snap:")) body.snapshot = from.slice(5); else body.folder = from.slice(7);
+    return body;
+  }
+
+  async function checkMove() {
+    if (!$("moveFrom").value) return toast("There is no copy to move yet.");
+    let p;
+    try {
+      p = await api(`v1/local/games/${gid(saveView.id)}/transfer`, { method: "POST", body: JSON.stringify(moveBody(true)) });
+    } catch (err) { return toast(err.message || String(err)); }
+    saveView.plan = p;
+    const count = (a) => p.writes.filter((w) => w.action === a).length;
+    $("movePlan").innerHTML = `<div>${count("add")} file${count("add") === 1 ? "" : "s"} added, ${count("replace")} replaced, ` +
+      `${count("same")} already the same` + (p.left_alone.length ? `, ${p.left_alone.length} other file${p.left_alone.length === 1 ? "" : "s"} left as they are` : "") +
+      `.</div>` + p.warnings.map((w) => `<div class="warn">${esc(w.message)}</div>`).join("") +
+      `<div class="row"><button type="button" data-savemovego="1">Move</button></div>`;
+  }
+
+  async function goMove() {
+    const p = saveView.plan, newer = p.warnings.some((w) => w.code === "destination_newer");
+    if (!confirm(`Move these saves to ${p.to}? What is there now is kept first.` +
+      (newer ? " The destination is NEWER than this copy: its progress will be replaced." : "") + " Close the game before.")) return;
+    try {
+      const r = await api(`v1/local/games/${gid(saveView.id)}/transfer`, { method: "POST", body: JSON.stringify(moveBody(false, newer)) });
+      toast(`Saves moved: ${r.writes.filter((w) => w.action !== "same").length} file(s) written and checked.`);
+    } catch (err) { return toast(err.message || String(err)); }
+    return showMove();
+  }
+
   async function showChanges() {
+    $("savesMore").classList.remove("moving");
     const r = await api(`v1/local/games/${gid(saveView.id)}/changes`);
     saveView.changes = r.changes.slice().reverse();
     const options = saveView.game.achievements
@@ -425,6 +485,17 @@
       return renderSaves(id, saveView.game);
     }
     if (t.dataset.saverestorelist) return showRestoreList();
+    if (t.dataset.savemove) return showMove();
+    if (t.dataset.savemovecheck) return checkMove();
+    if (t.dataset.savemovego) return goMove();
+    if (t.dataset.saveundo) {
+      if (!confirm("Undo this move? The destination goes back to how it was before.")) return;
+      try {
+        await api(`v1/local/games/${gid(id)}/transfer/${encodeURIComponent(t.dataset.saveundo)}/undo`, { method: "POST" });
+        toast("Move undone.");
+      } catch (err) { return toast(err.message || String(err)); }
+      return showMove();
+    }
     if (t.dataset.savechanges) return showChanges();
     if (t.dataset.saverestore) {
       const sn = saveView.kept.snapshots.find((x) => x.id === t.dataset.saverestore);

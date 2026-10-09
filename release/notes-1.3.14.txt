@@ -1,0 +1,5 @@
+Greycell Achievements 1.3.14
+- Move saves between installs of the same game, like a repacked or DRM-free copy and the Steam copy: open the game, Saves, Move to another install. Pick the copy and where it goes, Check shows exactly what would be added or replaced, and what the destination holds is kept first.
+- A move never replaces newer progress without asking, never runs while the game is open, and checks every file after writing it. Undo puts the destination back as it was, as long as the game has not saved over it since.
+- Saves kept by Goldberg and GSE (common in repacks) are now kept like every other game's, and line up file for file with Steam Cloud's.
+- A game's Saves panel now includes the copies linked into it, such as a DRM-free copy linked into the Steam game.

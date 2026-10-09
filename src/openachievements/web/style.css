@@ -90,6 +90,10 @@ label.inline select { width: auto; padding: 4px 8px; }
 .saves-found .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .saves-more:empty { display: none; }
 .saves-more { margin-top: 10px; display: grid; gap: 6px; max-height: 320px; overflow-y: auto; }
+.saves-more .warn { color: var(--gold); }
+.saves-more.moving { max-height: none; }
+.saves-more .move-field { display: grid; gap: 4px; font-size: 13px; }
+.saves-more .move-field select { max-width: 100%; }
 .save-row { display: flex; gap: 8px; align-items: center; justify-content: space-between; flex-wrap: wrap;
   padding: 6px 8px; border-radius: 8px; background: var(--panel); }
 .save-row code { overflow-wrap: anywhere; }
