@@ -27,6 +27,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Callable
 
 from . import __version__
@@ -89,15 +90,26 @@ def latest(repo: str, get: Callable[[str], dict] | None = None) -> dict | None:
             "page": data.get("html_url"), "notes": str(data.get("body") or "")[:2000]}
 
 
-def platform_key(system: str | None = None, machine: str | None = None) -> str:
+def deb_install() -> bool:
+    """Installed from the Debian package: its files belong to the system, so
+    it updates through the system's installer (the package leaves
+    `.deb-install` beside the program)."""
+    return bool(getattr(sys, "frozen", False)) and (Path(sys.executable).parent / ".deb-install").is_file()
+
+
+def platform_key(system: str | None = None, machine: str | None = None, deb: bool | None = None) -> str:
     """This build's entry in the manifest's "platforms": linux-x86_64,
-    linux-arm64, windows-x86_64, windows-arm64."""
+    linux-arm64, windows-x86_64, windows-arm64, and linux-<arch>-deb for the
+    Debian package."""
     import platform as _platform
     system = system or sys.platform
     machine = (machine or _platform.machine() or "").lower()
     arch = {"amd64": "x86_64", "x86_64": "x86_64", "x64": "x86_64", "aarch64": "arm64", "arm64": "arm64"}.get(machine,
                                                                                                          machine)
-    return f"{'windows' if system == 'win32' else 'linux' if system.startswith('linux') else system}-{arch}"
+    key = f"{'windows' if system == 'win32' else 'linux' if system.startswith('linux') else system}-{arch}"
+    if key.startswith("linux-") and (deb_install() if deb is None else deb):
+        key += "-deb"
+    return key
 
 
 def latest_setup(manifest: str, get: Callable[[str], dict] | None = None, key: str | None = None) -> dict | None:

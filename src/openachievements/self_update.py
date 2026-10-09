@@ -55,9 +55,11 @@ def download(release: dict, folder: Path | None = None, opener: Callable = _open
         raise UpdateError("The update's address is not a secure one.")
     folder = Path(folder or Path(tempfile.gettempdir()) / "GreycellAchievements-update")
     folder.mkdir(parents=True, exist_ok=True)
-    appimage = release["setup"].endswith(".AppImage")
-    target = folder / (f"GreycellAchievements-{release['version']}.AppImage" if appimage
-                       else f"GreycellAchievementsSetup-{release['version']}.exe")
+    kind = ".AppImage" if release["setup"].endswith(".AppImage") else ".deb" if release["setup"].endswith(".deb") \
+        else ".exe"
+    target = folder / {".AppImage": f"GreycellAchievements-{release['version']}.AppImage",
+                       ".deb": f"GreycellAchievements-{release['version']}.deb",
+                       ".exe": f"GreycellAchievementsSetup-{release['version']}.exe"}[kind]
     for old in folder.glob("GreycellAchievements*"):     # earlier updates' downloads: not kept forever
         if old != target:
             try:
@@ -149,6 +151,19 @@ def _swap_appimage(setup: Path, popen: Callable) -> None:
     relaunch_after_quit(Path(target), popen=popen)
 
 
+def _hand_to_installer(package: Path, opener: Callable[[list[str]], bool] | None = None) -> None:
+    """A Debian package's files belong to the system: the checked package is
+    opened with the desktop's software installer (GNOME Software, Discover),
+    which asks for the password and replaces the app."""
+    import shutil
+    from . import linux_desktop
+    tool = shutil.which("xdg-open")
+    spawn = opener or linux_desktop._spawn
+    if not tool or not spawn([tool, str(package)]):
+        raise UpdateError(f"The new package is downloaded and checked: {package}. Open it to install, "
+                          "or run: sudo apt install " + str(package))
+
+
 def install(release: dict, quit_app: Callable[[], None], opener: Callable = _open,
             popen: Callable = subprocess.Popen, folder: Path | None = None) -> bool:
     """Download, check, run the installer, quit. One at a time. False when it did not start."""
@@ -158,6 +173,10 @@ def install(release: dict, quit_app: Callable[[], None], opener: Callable = _ope
         STATE.update(phase="downloading", error=None, version=release["version"])
         setup = download(release, folder, opener)
         STATE.update(phase="installing")
+        if setup.suffix == ".deb":
+            _hand_to_installer(setup)
+            STATE.update(phase="handed-over", error=None)
+            return True                              # the app keeps running; the installer replaces it
         if setup.suffix == ".AppImage":
             _swap_appimage(setup, popen)
         else:

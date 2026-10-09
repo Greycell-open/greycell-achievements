@@ -229,6 +229,12 @@ def serve_in_tray(background: bool) -> int:
 
     if sys.platform != "win32":
         _controls_in_the_page(quit_app)
+        if sys.platform.startswith("linux") and getattr(sys, "frozen", False):
+            try:                                         # a tray icon where the desktop has a tray
+                from . import linux_desktop, tray_linux
+                tray_linux.Tray(_open_browser, quit_app, _autostart_module(), linux_desktop.ICON).start()
+            except Exception as exc:  # noqa: BLE001 - the page's controls stay either way
+                print(f"tray unavailable: {exc}")
         thread.join()
         return 0
     from . import self_update

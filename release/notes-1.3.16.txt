@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.16
+- Linux: a .deb package for Debian, Ubuntu, Linux Mint and Pop!_OS, beside the AppImage. It installs for every user and appears in the app menu; when a new version is out, the app downloads and checks it, then opens it in your software installer.
+- Linux: a tray icon on desktops that have a tray (KDE Plasma and the Steam Deck's Desktop Mode, Cinnamon, XFCE, LXQt, Budgie, GNOME with the AppIndicator extension). Click it to open your library; its menu has Start at login and Quit.

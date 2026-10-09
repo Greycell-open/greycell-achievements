@@ -53,11 +53,15 @@ def _spawn(command: list[str]) -> bool:
 
 
 def app_path() -> str | None:
-    """The program to start again later: the AppImage, else the built app.
-    None when running from source, where nothing is written for the desktop."""
+    """The program to start again later: the AppImage, the Debian package's
+    command, else the built app. None when running from source, where nothing
+    is written for the desktop."""
     appimage = os.environ.get("APPIMAGE")
     if appimage and os.path.isfile(appimage):
         return appimage
+    from .update import deb_install
+    if deb_install() and os.path.isfile("/usr/bin/greycell-achievements"):
+        return "/usr/bin/greycell-achievements"
     return sys.executable if getattr(sys, "frozen", False) else None
 
 
@@ -143,9 +147,11 @@ def icon_file() -> Path:
 
 def install_menu_entry() -> bool:
     """Put the app in the desktop's app menu, pointing at this AppImage, and
-    keep it pointing there if the file was moved. True when written."""
+    keep it pointing there if the file was moved. True when written. The
+    Debian package brings its own entry for every user: none is added."""
+    from .update import deb_install
     path = app_path()
-    if not path:
+    if not path or deb_install():
         return False
     text = _entry(_quote(path))
     target = menu_entry_file()

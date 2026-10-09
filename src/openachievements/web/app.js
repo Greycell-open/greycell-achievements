@@ -679,6 +679,10 @@
         if (u.progress && u.progress.phase === "error") {
           updating = false; updateFailed = true;
           $("updateNote").textContent = `The update did not install: ${u.progress.error}`;
+        } else if (u.progress && u.progress.phase === "handed-over") {
+          updating = false; updateFailed = true;              // stays readable: nothing more happens here
+          $("updateNote").textContent = "The new version is open in your software installer. Install it there, " +
+            "then start Greycell Achievements again.";
         }
       }
       $("liveDot").classList.toggle("off", !p.watching);
