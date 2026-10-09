@@ -1,7 +1,8 @@
 """Finding achievements for games that arrived without any.
 
 A program the matcher could not name joins the library as `local-<folder>`
-with no achievements (autodetect). Often it is a Steam game whose store title
+with no achievements (autodetect), and so does a game another store installed
+(`epic-`, `ea-`, `battlenet-`, `amazon-`) whose title no catalogue entry shares. Often it is a Steam game whose store title
 differs from its folder: "Mini Airways" on disk is "Mini Airways - ATC
 simulator" on Steam. The finder looks each such game up, most recently played
 first, and when it finds the Steam game it installs that game's achievement
@@ -34,6 +35,7 @@ import urllib.parse
 from datetime import datetime, timedelta, timezone
 
 from .adapters.autodetect import normalise, title_parts
+from .adapters.stores import FINDABLE
 from .catalog import steam as cat
 
 STORE_SEARCH_URL = "https://store.steampowered.com/api/storesearch/?term={term}&l=english&cc=US"
@@ -157,7 +159,7 @@ class AchievementFinder:
         state = self.profile.state()
         games = []
         for game_id, game in state["games"].items():
-            if not game_id.startswith("local-") or game.get("linked_to"):
+            if not game_id.startswith(FINDABLE) or game.get("linked_to"):
                 continue
             pack = state["packs"].get(game_id)
             if pack and not pack.get("removed") and pack.get("achievements"):
@@ -212,7 +214,7 @@ class AchievementFinder:
         "no-achievements" | "unreachable" | "skipped", "steam_game": id?}"""
         state = self.profile.state()
         game = state["games"].get(game_id)
-        if game is None or not game_id.startswith("local-") or game.get("linked_to"):
+        if game is None or not game_id.startswith(FINDABLE) or game.get("linked_to"):
             return {"result": "skipped"}
         index = self._index_loader()
         appid = catalogue_match(game, index)
@@ -303,7 +305,7 @@ def ask_for_playing(profile, playing, lists, finder, asked: dict, now: float) ->
         shown = shown_game(games, game_id)
         if shown.startswith("steam-") and shown[6:].isdigit():
             lists.prioritise(int(shown[6:]))
-        elif shown.startswith("local-"):
+        elif shown.startswith(FINDABLE):
             if not finder.prioritise(shown):
                 continue
         else:

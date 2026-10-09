@@ -348,7 +348,8 @@ def move_to(profile, dest: str | None) -> Path:
 
 def save_folders(profile) -> dict[str, list[Path]]:
     """game id -> the save folders known for it on this computer: found by
-    name (autodetect), or a pack's save folder this machine allowed."""
+    name (autodetect), kept by the game's store (Ubisoft Connect, the Xbox
+    app, Steam Cloud), or a pack's save folder this machine allowed."""
     from .adapters import savefile
     config = profile.config.load()
     out: dict[str, list[Path]] = {}
@@ -356,6 +357,10 @@ def save_folders(profile) -> dict[str, list[Path]]:
     for key, folders in (config.get("save_candidates") or {}).items():
         if key.startswith(prefix):
             out.setdefault(key[len(prefix):], []).extend(Path(f) for f in folders[:1])
+    for key, folders in (config.get("store_saves") or {}).items():
+        if key.startswith(prefix):
+            have = out.setdefault(key[len(prefix):], [])
+            have.extend(Path(f) for f in folders if Path(f) not in have)
     for pack_id, pack in profile.state()["packs"].items():
         if pack.get("removed"):
             continue
@@ -371,6 +376,14 @@ def save_folders(profile) -> dict[str, list[Path]]:
             return f != other and os.path.normcase(str(f)).startswith(os.path.normcase(str(other)).rstrip("\\/") + os.sep)
         out[game_id] = [f for f in folders if not any(inside(f, o) for o in folders)]
     return out
+
+
+def _restorable(snaps) -> list[dict]:
+    """Snapshots that may be put back by themselves: not of a folder a store's
+    own cloud keeps in step (Ubisoft Connect, the Xbox app, Steam Cloud), which
+    would fight the copy. Those are restored only when the player asks."""
+    from .adapters import stores
+    return [s for s in snaps if not stores.store_synced(s.get("folder") or "")]
 
 
 @dataclass
@@ -430,13 +443,13 @@ class KeeperWatcher:
         return Keeper(self.profile, self.root)
 
     def _empty(self, game_id: str) -> bool:
-        snaps = self._keeper().snapshots(game_id)
+        snaps = _restorable(self._keeper().snapshots(game_id))
         return bool(snaps) and not scan(here(snaps[0]["folder"]))
 
     def _put_back(self, keeper: Keeper, game_id: str, fresh_since: float | None = None) -> list[str]:
         """Restore the newest snapshot taken before the fresh start, keeping
         the fresh save as a snapshot first."""
-        snaps = [s for s in keeper.snapshots(game_id) if s.get("reason") != "before-restore"]
+        snaps = _restorable(s for s in keeper.snapshots(game_id) if s.get("reason") != "before-restore")
         if fresh_since is not None:
             cutoff = _iso(fresh_since)
             snaps = [s for s in snaps if s["taken_at"] < cutoff]
@@ -464,7 +477,7 @@ class KeeperWatcher:
             game_id = inst["game_id"]
             if game_id in playing:
                 continue
-            snaps = [s for s in keeper.snapshots(game_id) if s.get("reason") != "before-restore"]
+            snaps = _restorable(s for s in keeper.snapshots(game_id) if s.get("reason") != "before-restore")
             if not snaps or done.get(f"{self.profile.profile_id}:{game_id}") == snaps[0]["id"]:
                 continue
             try:

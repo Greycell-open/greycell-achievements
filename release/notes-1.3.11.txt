@@ -1,0 +1,5 @@
+Greycell Achievements 1.3.11
+- Games from the Epic Games Store, EA app, Ubisoft Connect, Battle.net, Amazon Games and the Xbox app are now recognised by the name their store gave them, from the store's own install records, instead of being guessed from the folder name.
+- Their saves are kept too: Ubisoft Connect's save folder, the Xbox app's save folder and Steam Cloud's save folder are now copied like every other game's saves. Because those stores sync these saves themselves, the app never puts them back on its own; you can still restore any copy from the game's Saves panel.
+- Unreal Engine games' saves are found from the game's own project name, so a game whose save folder is named differently from its title is still kept.
+- A store game that Steam also sells gets its achievement list, the same way games without achievements already do.

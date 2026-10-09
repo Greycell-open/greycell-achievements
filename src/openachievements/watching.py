@@ -32,7 +32,7 @@ def _quiet(_message: str) -> None:
 def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], None] = _quiet,
                   stop: threading.Event | None = None) -> None:
     from .adapters import (autodetect, emulator, executable, gog, psn, retroachievements, rpcs3, savefile, saverules,
-                           shadps4, steam_local, ubisoft, vita3k, xbox, xenia)
+                           shadps4, steam_local, stores, ubisoft, vita3k, xbox, xenia)
     from .catalog import steam as cat
     from .notify import Notifier
 
@@ -92,7 +92,7 @@ def watch_forever(profile: Profile, interval: float = 5.0, say: Callable[[str], 
             for found in detector.poll(running):
                 say(f"  recognised {found['title']} ({found['game_id']})"
                     + (f"; saves may be in {found['save_folders'][0]}" if found["save_folders"] else ""))
-                if found["game_id"].startswith("local-"):
+                if found["game_id"].startswith(stores.FINDABLE):
                     finder.want()                         # being played now: look its achievements up now
             for event in procs.poll(running):
                 show(event)

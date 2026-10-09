@@ -8,6 +8,12 @@ joins the library (Playing, unless it already has a status), its program is
 registered so play time counts, and folders that look like its saves are
 noted, by name only.
 
+Games other stores installed (Epic, EA app, Ubisoft Connect, Battle.net,
+Amazon, the Xbox app) are named from that store's own install records
+(adapters/stores.py) rather than guessed from their folder, and the save
+folders those stores keep (Ubisoft Connect's savegames, the Xbox app's wgs,
+Steam Cloud's userdata) are noted with them.
+
 Folder discovery lists directory names under the known save roots and reads
 no file. Reading a save still needs `save allow` (adapters/savefile.py).
 """
@@ -24,7 +30,7 @@ from pathlib import Path
 from .. import steamfiles as sf
 from ..catalog import steam as cat
 from ..profile import Profile, ProfileError
-from . import executable, savefile
+from . import executable, savefile, stores
 
 # Words that name an edition or a release, not the game.
 _NOISE = re.compile(r"\b(definitive|deluxe|ultimate|complete|goty|game of the year|remastered|enhanced|"
@@ -350,6 +356,7 @@ class AutoDetector:
     _steam_dirs: dict | None = None
     _saves_at: float = -1e18
     _local: dict = field(default_factory=dict)         # exe path -> local game id it was, before a refresh
+    _stores: stores.StoreIndex | None = None
 
     def enabled(self) -> bool:
         return self.profile.config.load().get("autodetect", {}).get(self.profile.profile_id, True)
@@ -370,6 +377,7 @@ class AutoDetector:
             self._matcher = TitleMatcher(_Titles(self._names), self.profile.state()["games"])
             self._matcher_at = time.monotonic()
             self._steam_dirs = steam_install_dirs(sf.steam_dir())
+            self._stores = stores.StoreIndex()
 
     def identify(self, path: str) -> tuple | None:
         low = path.lower().replace("/", "\\")
@@ -380,6 +388,16 @@ class AutoDetector:
             appid = (self._steam_dirs or {}).get(folder)
             if appid:
                 return ("steam", appid)
+        inst = self._stores.find(path) if self._stores is not None else None
+        if inst is not None:
+            # The store wrote down what it installed here: no guessing whether
+            # this is a game, and its own title. A catalogue title with exactly
+            # that name gives the game its achievement list.
+            if not stores.has_own_id(inst):
+                ids = self._matcher.by_name.get(normalise(inst.title))
+                if ids and len(ids) == 1:
+                    return next(iter(ids))
+            return ("store", stores.game_id(inst), inst)
         gog = gog_info(path)
         if not looks_like_a_game(path) and gog is None:
             return None
@@ -429,7 +447,33 @@ class AutoDetector:
             except (ProfileError, cat.CatalogError, OSError, ValueError):
                 continue
             state = self.profile.state()
+        try:
+            added += self.discover_store_saves()
+        except Exception:  # noqa: BLE001 - a store's folders being odd never stops discovery
+            pass
         self._saves_at = time.monotonic()
+        return added
+
+    def discover_store_saves(self) -> list[dict]:
+        """Save folders stores keep in their own place: Ubisoft Connect's for
+        every game it saved (a game it still has installed joins the library),
+        Steam Cloud's for Steam games already in the library."""
+        from . import ubisoft
+        added = []
+        games = self.profile.state()["games"]
+        installed = stores.ubisoft_folders()
+        for app, folders in stores.ubisoft_saved_games(ubisoft.connect_dir()).items():
+            game_id = ubisoft.game_id_for(int(app))
+            if game_id not in games:
+                if app not in installed:
+                    continue
+                self.profile.register_game(game_id, Path(installed[app].replace("\\", "/")).name,
+                                           platform=stores.PLATFORMS["ubisoft"], external_ids={"ubisoft": int(app)})
+                added.append({"game_id": game_id, "folder": folders[0]})
+            note_store_saves(self.profile, game_id, folders)
+        appids = {int(g[6:]) for g in games if g.startswith("steam-") and g[6:].isdigit()}
+        for appid, folders in stores.steam_cloud(sf.steam_dir(), appids).items():
+            note_store_saves(self.profile, f"steam-{appid}", folders)
         return added
 
     def poll(self, running: set[str] | None = None) -> list[dict]:
@@ -465,7 +509,15 @@ class AutoDetector:
     def _adopt(self, path: str, match: tuple) -> dict:
         kind, ref = match[0], match[1]
         state = self.profile.state()
-        if kind in ("gog", "local"):
+        inst = match[2] if kind == "store" else None
+        if inst is not None:
+            game_id = ref
+            if game_id not in state["games"]:
+                ext = int(inst.ref) if inst.store == "ubisoft" and inst.ref.isdigit() else (
+                    int(inst.ref, 16) if inst.store == "xbox" else inst.ref)
+                self.profile.register_game(game_id, inst.title, platform=stores.PLATFORMS.get(inst.store, "PC"),
+                                           external_ids={inst.store: ext})
+        elif kind in ("gog", "local"):
             game_id = f"gog-{ref}" if kind == "gog" else ref
             if game_id not in state["games"]:
                 self.profile.register_game(game_id, match[2], platform="PC (GOG)" if kind == "gog" else "PC",
@@ -492,15 +544,21 @@ class AutoDetector:
         if Path(path).is_file():
             executable.register(self.profile, game_id, Path(path), source="detected")
         saves = find_save_folders(game.get("title") or game_id)
+        exact = stores.unreal_saves(path, savefile.root_folder("LOCALAPPDATA"))
         unity = unity_info(path)
         if unity:                                   # the engine says exactly where: first
-            exact = savefile.root_folder("LOCALLOW")
-            exact = exact / unity[0] / unity[1] if exact is not None else None
-            if exact is not None and exact.is_dir():
-                saves = [str(exact)] + [f for f in saves if os.path.normcase(f) != os.path.normcase(str(exact))]
+            low = savefile.root_folder("LOCALLOW")
+            low = low / unity[0] / unity[1] if low is not None else None
+            if low is not None and low.is_dir():
+                exact.insert(0, str(low))
+        if exact:
+            saves = exact + [f for f in saves if os.path.normcase(f) not in {os.path.normcase(e) for e in exact}]
         with self.profile.config.editing() as config:
             config.setdefault("save_candidates", {})[f"{self.profile.profile_id}:{game_id}"] = saves
-        return {"game_id": game_id, "title": game.get("title"), "path": path, "save_folders": saves}
+        kept = stores.save_folders(inst) if inst is not None else []
+        note_store_saves(self.profile, game_id, kept)
+        return {"game_id": game_id, "title": game.get("title"), "path": path,
+                "save_folders": list(dict.fromkeys(kept + saves))}
 
 
 def set_enabled(profile: Profile, on: bool) -> None:
@@ -509,4 +567,22 @@ def set_enabled(profile: Profile, on: bool) -> None:
 
 
 def save_candidates(profile: Profile, game_id: str) -> list[str]:
-    return profile.config.load().get("save_candidates", {}).get(f"{profile.profile_id}:{game_id}", [])
+    """The folders a store keeps the game's saves in, then those found by name."""
+    config, key = profile.config.load(), f"{profile.profile_id}:{game_id}"
+    return list(dict.fromkeys((config.get("store_saves") or {}).get(key, [])
+                              + (config.get("save_candidates") or {}).get(key, [])))
+
+
+def store_saves(profile: Profile, game_id: str) -> list[str]:
+    return (profile.config.load().get("store_saves") or {}).get(f"{profile.profile_id}:{game_id}", [])
+
+
+def note_store_saves(profile: Profile, game_id: str, folders: list[str]) -> None:
+    """Remember save folders a store keeps for the game. Only writes when
+    there is something new."""
+    new = [f for f in folders if f not in store_saves(profile, game_id)]
+    if not new:
+        return
+    with profile.config.editing() as config:
+        known = config.setdefault("store_saves", {}).setdefault(f"{profile.profile_id}:{game_id}", [])
+        known.extend(f for f in new if f not in known)
