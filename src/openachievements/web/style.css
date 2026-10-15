@@ -286,3 +286,18 @@ code { background: var(--panel-2); padding: 1px 6px; border-radius: 6px; }
 .credits strong { color: var(--text); }
 button.link { background: none; border: 0; padding: 0; color: inherit; font: inherit; text-decoration: underline; cursor: pointer; }
 .dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+
+/* What a dashboard achievement is, on hover or keyboard focus. */
+.ach-tip { position: fixed; z-index: 50; width: min(320px, calc(100vw - 16px)); background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; box-shadow: 0 12px 32px rgba(0, 0, 0, .35); pointer-events: none; font-size: 13px; }
+.ach-tip[hidden] { display: none; }
+.ach-tip .tip-head { display: flex; gap: 10px; align-items: center; }
+.ach-tip .tip-head img, .ach-tip .tip-head .glyph { width: 40px; height: 40px; border-radius: 8px; flex: none; object-fit: cover; }
+.ach-tip .tip-head b { display: block; }
+.ach-tip .tip-head small { color: var(--muted); }
+.ach-tip p { margin: 8px 0 0; }
+.ach-tip .tip-facts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ach-tip .tip-facts span { background: var(--panel-2); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.ach-tip .tip-hint { color: var(--muted); font-size: 11px; margin-top: 8px; }
+.recent li:focus-visible { outline: 2px solid var(--violet); outline-offset: 1px; }
+.ach.focused { outline: 2px solid var(--violet); animation: ach-focus 1.6s ease-out 1; }
+@keyframes ach-focus { from { box-shadow: 0 0 0 6px rgba(139, 92, 246, .45); } to { box-shadow: 0 0 0 0 rgba(139, 92, 246, 0); } }

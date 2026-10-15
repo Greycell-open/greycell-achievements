@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.18
+- Hover over an achievement under Recent unlocks or Your rarest to see what it is: its picture, description, how rare it is and when you got it.
+- Clicking one opens its game with that achievement in view and marked. Enter does the same from the keyboard.

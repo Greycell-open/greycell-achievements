@@ -302,7 +302,7 @@
     } catch (err) { button.disabled = false; throw err; }
   }
 
-  function openGame(id) {
+  function openGame(id, focusKey) {
     const g = library.games.find((x) => x.game_id === id);
     if (!g) return;
     $("gameTitle").textContent = g.title || g.game_id;
@@ -326,7 +326,7 @@
       const secret = a.secret ? ` secret" data-reveal="${esc(a.key)}" role="button" tabindex="0" ` +
         `title="${shown === a ? "Click to show this hidden achievement" : "Click to hide it again"}` : "";
       if (a.secret) chips.push(`<span class="chip">${shown === a ? "hidden · click to show" : "hidden"}</span>`);
-      return `<div class="ach ${a.unlocked ? "unlocked" : "locked"}${secret}">` + picture(a.icon, shown.name, "") +
+      return `<div class="ach ${a.unlocked ? "unlocked" : "locked"}${secret}" data-key="${esc(a.key)}">` + picture(a.icon, shown.name, "") +
         `<div class="ach-body"><div class="ach-name">${esc(shown.name)}</div>` +
         (shown === a && a.secret ? `<div class="ach-desc">Details are hidden until you unlock it.</div>`
           : shown.description ? `<div class="ach-desc">${esc(shown.description)}</div>` : "") +
@@ -341,6 +341,9 @@
     $("gameStatus").value = g.status || "none";
     $("gameDialog").dataset.game = id;
     if (!$("gameDialog").open) $("gameDialog").showModal();
+    // Opened from a dashboard achievement: go to it and mark it.
+    const card = focusKey && [...$("achievementList").querySelectorAll(".ach")].find((el) => el.dataset.key === focusKey);
+    if (card) { card.scrollIntoView({ block: "center" }); card.classList.add("focused"); }
   }
 
   // ---- saves: kept copies, putting them back, what changed, rules -------------
@@ -627,7 +630,7 @@
           `<span class="src">All ${g.total}</span><time datetime="${esc(plat)}">${esc(since(plat))}</time></li>`;
       }
       const src = (a.sources || [a.source]).map((s) => SOURCE[s] || s).filter(Boolean)[0] || "";
-      return `<li data-game="${esc(g.game_id)}" class="${fresh.has(a.key || a.id) ? "fresh" : ""}">` +
+      return `<li data-game="${esc(g.game_id)}" data-ach="${esc(a.key || "")}" tabindex="0" class="${fresh.has(a.key || a.id) ? "fresh" : ""}">` +
         `<span class="aname">${esc(a.name)}</span><span class="gname">${esc(g.title)}</span>` +
         (src ? `<span class="src">${esc(src)}</span>` : "") +
         `<time datetime="${esc(a.unlocked_at)}">${esc(since(a.unlocked_at))}</time></li>`;
@@ -635,16 +638,62 @@
     renderRarest();
   }
 
+  const pct = (p) => p < 0.1 ? "<0.1%" : p < 10 ? `${p.toFixed(1)}%` : `${Math.round(p)}%`;
+
+  // An achievement by key, wherever it lives: a linked game's unlocks show
+  // under the game it is linked into, not always the id a shelf row carries.
+  function findAch(gameId, key) {
+    if (!library || !key) return null;
+    const own = library.games.find((g) => g.game_id === gameId);
+    for (const g of own ? [own, ...library.games] : library.games) {
+      const a = g.achievements.find((x) => x.key === key);
+      if (a) return { g, a };
+    }
+    return null;
+  }
+
+  // The card that shows what a dashboard achievement is, on hover or focus.
+  function showAchTip(li) {
+    const hit = findAch(li.dataset.game, li.dataset.ach);
+    const tip = $("achTip");
+    if (!hit) { tip.hidden = true; return; }
+    const { g, a } = hit, rare = rarestRows.get(a.key);
+    const shown = a.secret && !a.unlocked ? a.secret : a;
+    const facts = [rare ? `${pct(rare.percent)} of players have it` : "",
+                   a.unlocked_at ? `Unlocked ${fmtDate(a.unlocked_at)}` : "", a.points ? `${a.points} pts` : ""].filter(Boolean);
+    tip.innerHTML = `<div class="tip-head">${picture(a.icon, shown.name, "")}<div><b>${esc(shown.name)}</b>` +
+      `<small>${esc(g.title || g.game_id)}</small></div></div>` +
+      (shown.description ? `<p>${esc(shown.description)}</p>` : `<p class="muted">No description.</p>`) +
+      (facts.length ? `<div class="tip-facts">${facts.map((f) => `<span>${esc(f)}</span>`).join("")}</div>` : "") +
+      `<div class="tip-hint">Click to open it in its game</div>`;
+    tip.hidden = false;
+    const r = li.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    tip.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
+    tip.style.top = `${r.bottom + 6 + h < window.innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
+  }
+  const tipRow = (e) => e.target.closest && e.target.closest("#dash li[data-ach]");
+  document.addEventListener("mouseover", (e) => { const li = tipRow(e); if (li && li.dataset.ach) showAchTip(li); });
+  document.addEventListener("mouseout", (e) => { const li = tipRow(e); if (li && !li.contains(e.relatedTarget)) $("achTip").hidden = true; });
+  document.addEventListener("focusin", (e) => { const li = tipRow(e); if (li && li.dataset.ach) showAchTip(li); else $("achTip").hidden = true; });
+  document.addEventListener("keydown", (e) => {
+    const li = tipRow(e);
+    if (li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); li.click(); }
+    if (e.key === "Escape") $("achTip").hidden = true;
+  });
+  window.addEventListener("scroll", () => { $("achTip").hidden = true; }, true);
+
   // The fewest players have these: from the rarity this computer already knows.
+  let rarestRows = new Map();
   async function renderRarest() {
     let r;
     try { r = await api("v1/local/rarest"); } catch (err) { return; }
     const rows = r.rarest || [];
     $("rarestPanel").hidden = !rows.length;
-    const pct = (p) => p < 0.1 ? "<0.1%" : p < 10 ? `${p.toFixed(1)}%` : `${Math.round(p)}%`;
-    $("rarestUnlocks").innerHTML = rows.map((x) => `<li data-game="${esc(x.game_id)}"${x.percent < 5 ? ' class="rare"' : ""}>` +
+    rarestRows = new Map(rows.map((x) => [x.key, x]));
+    $("rarestUnlocks").innerHTML = rows.map((x) => `<li data-game="${esc(x.game_id)}" data-ach="${esc(x.key)}" tabindex="0"` +
+      `${x.percent < 5 ? ' class="rare"' : ""}>` +
       `<span class="aname">${esc(x.name)}</span><span class="gname">${esc(x.title)}</span>` +
-      `<span class="src" title="Share of players who have it">${esc(pct(x.percent))}</span>` +
+      `<span class="src">${esc(pct(x.percent))}</span>` +
       (x.unlocked_at ? `<time datetime="${esc(x.unlocked_at)}">${esc(since(x.unlocked_at))}</time>` : "") + `</li>`).join("");
   }
 
@@ -1091,7 +1140,11 @@
     const t = e.target.closest("button, [data-game], [data-reveal]");
     if (!t) return;
     try {
-      if (t.dataset.game) return openGame(t.dataset.game);
+      if (t.dataset.game) {
+        $("achTip").hidden = true;
+        const hit = t.dataset.ach ? findAch(t.dataset.game, t.dataset.ach) : null;
+        return openGame(hit ? hit.g.game_id : t.dataset.game, hit ? hit.a.key : null);
+      }
       if (Object.keys(t.dataset).some((k) => k.startsWith("save"))) return await saveAction(t);
       if (t.dataset.tab) return setAuthTab(t.dataset.tab);
       if (t.dataset.act === "library") return loadLibrary();
