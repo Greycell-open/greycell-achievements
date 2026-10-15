@@ -376,6 +376,8 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         stamp = hashlib.sha1(repr(profile.log.signature()).encode()).hexdigest()[:16]
         games = profile.state()["games"]
         live = watching.LIVE
+        from .finder import shown_game
+        playing = sorted({shown_game(games, game_id) for game_id in live["playing"]})
         from . import __version__, update
         try:                                     # what the last check found; never asks the network here
             found = update.check(profile.config, network=False)
@@ -384,7 +386,7 @@ def create_local_app(profile: Profile, token: str | None = None, catalog_dir: Pa
         return {"stamp": stamp, "watching": live["at"] is not None, "version": __version__,
                 "update": found if found and found.get("available") else None,
                 "playing": [{"game_id": g, "title": (games.get(g) or {}).get("title") or g}
-                            for g in live["playing"]],
+                            for g in playing],
                 "syncs": syncs()}
 
     def syncs() -> list[dict]:

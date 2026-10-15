@@ -115,6 +115,27 @@ def _container(r: _Reader, kind: tuple[str, list], end: int, depth: int, new_lay
         count = r.i32()
         if not 0 <= count <= end - r.i:
             raise GvasError("implausible element count")
+        # Older Unreal versions prefix an array of structs with one complete
+        # StructProperty tag describing the whole element payload. It is not
+        # the first element. Read that wrapper once, then read the individual
+        # property lists inside it. Treating the wrapper as an element skips
+        # its recorded size and leaves every remaining element empty.
+        if name == "ArrayProperty" and params[0][0] == "StructProperty" and not new_layout:
+            r.fstring()                               # element property name
+            element_kind, size, _bool_value = _old_tag(r)
+            if element_kind[0] != "StructProperty" or size < 0 or r.i + size > end:
+                raise GvasError("malformed struct array")
+            payload_end = r.i + size
+            out = []
+            for _ in range(count):
+                before = r.i
+                out.append(_properties(r, payload_end, depth + 1, new_layout=False))
+                if r.i <= before:
+                    raise GvasError("struct array element made no progress")
+            if r.i > payload_end:
+                raise GvasError("struct array runs past its recorded size")
+            r.i = payload_end
+            return out
         return [_value(r, params[0], depth, new_layout) for _ in range(count)]
     if name == "MapProperty":
         r.i32()                                       # keys to remove

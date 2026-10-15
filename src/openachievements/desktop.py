@@ -12,7 +12,8 @@ The first run creates a profile named after the Windows user.
                                             goes to the terminal it was started from
     GreycellAchievements.exe --toast        the unlock popup (started by the app)
 
-A second launch while the app runs only opens the browser. A windowed program
+A second launch while the app runs, or while it is still starting, only opens
+the browser. A windowed program
 has nowhere to print, so the app's own output goes to app.log in the machine
 settings folder. Updates: a frozen app cannot pip-install over itself; it
 downloads the new installer from greycell.app and runs it (self_update.py).
@@ -38,6 +39,56 @@ def _running() -> bool:
     with socket.socket() as s:
         s.settimeout(0.5)
         return s.connect_ex(("127.0.0.1", PORT)) == 0
+
+
+# Held for the life of the process; the system lets go of it when the process
+# ends, however it ends, so an update's restart is never locked out.
+_INSTANCE = None
+
+
+def _claim_instance() -> bool:
+    """True when no other copy of the app is running or starting.
+
+    The port alone cannot tell: a copy takes several seconds to open it, so two
+    launches close together (a double double-click) both found it free, both
+    ran, and every game session and unlock was handled twice. This is claimed
+    at once instead, by a named mutex on Windows and a file lock elsewhere,
+    both per port so a test build beside the real app still runs.
+    """
+    global _INSTANCE
+    if _INSTANCE is not None:
+        return True
+    if sys.platform == "win32":
+        import ctypes
+        from ctypes import wintypes
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateMutexW.argtypes = (wintypes.LPVOID, wintypes.BOOL, wintypes.LPCWSTR)
+        kernel32.CreateMutexW.restype = wintypes.HANDLE
+        kernel32.CloseHandle.argtypes = (wintypes.HANDLE,)
+        kernel32.CloseHandle.restype = wintypes.BOOL
+        handle = kernel32.CreateMutexW(None, False, f"Local\\GreycellAchievements-{PORT}")
+        if not handle:
+            return True                          # cannot tell; the port check still stands
+        if ctypes.get_last_error() == 183:       # ERROR_ALREADY_EXISTS
+            kernel32.CloseHandle(handle)
+            return False
+        _INSTANCE = handle
+        return True
+    import fcntl
+    from .profile import default_config_dir
+    folder = default_config_dir()
+    try:
+        folder.mkdir(parents=True, exist_ok=True)
+        lock = open(folder / f"app-{PORT}.lock", "a")
+    except OSError:
+        return True                              # cannot tell; the port check still stands
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except OSError:
+        lock.close()
+        return False
+    _INSTANCE = lock
+    return True
 
 
 def _first_profile() -> bool:
@@ -287,6 +338,14 @@ def main(argv: list[str] | None = None) -> int:
     if _running():
         if not background:
             _open_browser()
+        return 0
+    if not _claim_instance():                    # another copy is starting: show its library
+        if not background:
+            for _ in range(40):
+                if _running():
+                    _open_browser()
+                    break
+                time.sleep(0.25)
         return 0
     if getattr(sys, "frozen", False) or sys.stdout is None:
         _log_to_file()

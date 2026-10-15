@@ -67,6 +67,23 @@ def old_layout_save():
             + fstr("None"))
 
 
+def old_struct_array_save():
+    """Before UE 5.4, struct arrays carry one element-payload property tag."""
+    elements = b"".join(
+        old_prop("Progress", "FloatProperty", struct.pack("<f", progress))
+        + old_prop("Percent", "FloatProperty", struct.pack("<f", percent))
+        + fstr("None")
+        for progress, percent in ((0.0, 0.0), (1.0, 1.0), (3.0, 0.75))
+    )
+    wrapper = struct.pack("<i", 3) + old_prop(
+        "AchievementData", "StructProperty", elements,
+        extra=fstr("AchievementData") + b"\0" * 16,
+    )
+    return (header(1009)
+            + old_prop("AchievementData", "ArrayProperty", wrapper, extra=fstr("StructProperty"))
+            + fstr("None"))
+
+
 # ---- the reader ---------------------------------------------------------------------------
 
 def test_a_ue5_save_reads_into_plain_values():
@@ -79,6 +96,15 @@ def test_a_ue5_save_reads_into_plain_values():
 def test_an_older_layout_save_reads_too():
     data = gvas.parse(old_layout_save())
     assert data == {"Level": 7, "Hard": True, "Name": "Zein", "Bosses": ["Alpha", "Beta"]}
+
+
+def test_an_older_layout_array_of_structs_reads_every_element():
+    data = gvas.parse(old_struct_array_save())
+    assert data["AchievementData"] == [
+        {"Progress": 0.0, "Percent": 0.0},
+        {"Progress": 1.0, "Percent": 1.0},
+        {"Progress": 3.0, "Percent": 0.75},
+    ]
 
 
 @pytest.mark.parametrize("damage", [b"", b"GVAS", b"NOPE" + b"\0" * 40])
@@ -219,4 +245,3 @@ def test_the_owner_can_read_hidden_text_and_the_public_cannot(profile, tmp_path)
     public = reducer.without_secrets(profile.library()["games"])
     assert all(a["secret"] is None for g in public for a in g["achievements"])
     assert "Otherworld" not in json.dumps(public)
-

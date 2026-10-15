@@ -56,11 +56,13 @@ _HELPERS = ("unitycrashhandler", "crashreportclient", "crashpad_handler", "crash
 SIMILARITY = 0.95
 SAVE_SCAN_EVERY = 5 * 60
 FUZZY_MIN_LENGTH = 8
+ALIAS_MIN_WORD = 3                # "mgsdelta": initials, then a real word
+ALIAS_MIN_LENGTH = 6
 SAVE_SEARCH_DEPTH = 3
 
 
 def normalise(name: str) -> str:
-    text = _BRACKETS.sub(" ", name.lower().replace("_", " ").replace(".", " "))
+    text = _BRACKETS.sub(" ", name.lower().replace("δ", " delta ").replace("_", " ").replace(".", " "))
     text = _NON_WORD.sub(" ", text.replace("'", ""))
     text = _NOISE.sub(" ", text)
     return " ".join(text.split())
@@ -76,6 +78,28 @@ def title_parts(title: str) -> list[str]:
             head, tail = title.split(sep, 1)
             parts += [p for p in (normalise(head), normalise(tail)) if len(p) >= 6]
     return list(dict.fromkeys(parts))
+
+
+def title_aliases(title: str) -> list[str]:
+    """Catalogue-only names for compact executable and folder titles.
+
+    A game's internal name may combine the initials of a series with the final
+    word of its public title. For example, ``METAL GEAR SOLID Δ`` becomes
+    ``mgsdelta``. These aliases are safe only when one catalogue identity owns
+    them, which TitleMatcher and the finder enforce at their lookup boundary.
+    Bare initials are not offered: catalogue-wide they are thousands of four
+    and five letter names, so a game nobody catalogued, in a folder called
+    "Test" or "Kaos", would take a stranger's achievements. The final word
+    must be a real word for the same reason.
+    """
+    phrases = [normalise(title), *title_parts(title)]
+    aliases = list(phrases)
+    for phrase in phrases:
+        words = phrase.split()
+        if len(words) < 3 or len(words[-1]) < ALIAS_MIN_WORD:
+            continue
+        aliases.append("".join(word[0] for word in words[:-1]) + words[-1])
+    return [name for name in dict.fromkeys(aliases) if len(name) >= ALIAS_MIN_LENGTH]
 
 
 # Folder names engines, launchers and tools use for their own purposes. A game
@@ -97,14 +121,16 @@ class TitleMatcher:
 
     def __init__(self, index: cat.CatalogIndex | None, library: dict | None = None):
         self.by_name: dict[str, set] = {}
-        subtitles: dict[str, set] = {}
+        aliases: dict[str, set] = {}
         for appid, (_o, _l, _c, title) in (index.entries.items() if index else []):
-            self.by_name.setdefault(normalise(title), set()).add(("steam", appid))
-            for part in title_parts(title):
-                subtitles.setdefault(part, set()).add(("steam", appid))
-        for sub, ids in subtitles.items():
-            if len(ids) == 1 and sub not in self.by_name:
-                self.by_name[sub] = set(ids)
+            canonical = normalise(title)
+            self.by_name.setdefault(canonical, set()).add(("steam", appid))
+            for alias in title_aliases(title):
+                if alias != canonical:
+                    aliases.setdefault(alias, set()).add(("steam", appid))
+        for alias, ids in aliases.items():
+            if len(ids) == 1 and alias not in self.by_name:
+                self.by_name[alias] = set(ids)
         for name in [n for n in self.by_name if n in _GENERIC]:
             del self.by_name[name]
         library = library or {}

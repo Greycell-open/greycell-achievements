@@ -13,6 +13,8 @@ from openachievements.catalog import steam as cat
 
 APPID = 2289650
 TITLE = "Mini Airways - ATC simulator"
+MGS_APPID = 2417610
+MGS_TITLE = "METAL GEAR SOLID Δ: SNAKE EATER"
 SCHEMA = [{"internal_name": "ACH_FIRST", "localized_name": "First Landing", "localized_desc": "Land a plane",
            "icon": "a.jpg", "hidden": False},
           {"internal_name": "ACH_SECRET", "localized_name": "Night Shift", "localized_desc": "Work at night",
@@ -62,6 +64,28 @@ def test_the_matcher_knows_a_title_by_the_name_before_its_subtitle():
     assert ad.TitleMatcher(index).match(["Mini Airways"]) is None
 
 
+def test_compact_internal_name_matches_one_canonical_title():
+    index = ad._Titles({MGS_APPID: MGS_TITLE})
+    assert ad.normalise(MGS_TITLE) == "metal gear solid delta snake eater"
+    assert "mgsdelta" in ad.title_aliases(MGS_TITLE)
+    assert ad.TitleMatcher(index).match(["MGSDelta"]) == ("steam", MGS_APPID)
+
+
+def test_bare_initials_never_name_a_game():
+    # Thousands of catalogue titles have four or five initials; an uncatalogued
+    # game in a folder called "Test" must stay its own game.
+    index = ad._Titles({771710: ".T.E.S.T: Expected Behaviour", 1: "Kingdom Of Amazing Souls"})
+    assert "test" not in ad.title_aliases(".T.E.S.T: Expected Behaviour")
+    assert ad.TitleMatcher(index).match(["Test"]) is None
+    assert ad.TitleMatcher(index).match(["KOAS"]) is None
+    assert ad.TitleMatcher(index).match(["koasouls"]) == ("steam", 1)
+
+
+def test_a_compact_alias_shared_by_two_titles_is_not_guessed():
+    index = ad._Titles({MGS_APPID: MGS_TITLE, 999: "METAL GEAR SOLID Δ: BONUS MISSIONS"})
+    assert ad.TitleMatcher(index).match(["MGSDelta"]) is None
+
+
 def test_a_local_game_is_found_on_steam_and_linked_with_its_achievements(profile):
     game_id = local_game(profile)
     calls = []
@@ -91,6 +115,25 @@ def test_the_catalogue_on_this_computer_is_asked_before_steam(profile):
     found = finder(profile, fake_steam([], calls=calls), index=Index()).find_one(game_id)
     assert found["result"] == "linked" and calls == []          # no request at all
     assert profile.state()["games"][game_id]["linked_to"] == f"steam-{APPID}"
+
+
+def test_existing_mgsdelta_stand_in_links_to_its_existing_steam_pack(profile):
+    entry = cat.fetch_game(MGS_APPID, fake_steam([], {MGS_APPID: SCHEMA}), known_title=MGS_TITLE)
+
+    class Index:
+        entries = {MGS_APPID: (0, 0, 2, MGS_TITLE)}
+
+        def get(self, appid):
+            return entry if appid == MGS_APPID else None
+
+    cat.add_to_profile(profile, Index(), MGS_APPID, status="backlog")
+    game_id = local_game(profile, "MGSDelta")
+    found = finder(profile, fake_steam([]), index=Index()).find_one(game_id)
+    assert found == {"result": "linked", "steam_game": f"steam-{MGS_APPID}", "appid": MGS_APPID}
+    state = profile.state()
+    assert state["games"][game_id]["linked_to"] == f"steam-{MGS_APPID}"
+    assert state["games"][f"steam-{MGS_APPID}"]["title"] == MGS_TITLE
+    assert state["games"][f"steam-{MGS_APPID}"]["status"] == "playing"
 
 
 def test_an_unclear_store_answer_links_nothing(profile):

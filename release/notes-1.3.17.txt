@@ -1,0 +1,4 @@
+Greycell Achievements 1.3.17
+- Games whose program has a short name are recognised: METAL GEAR SOLID Δ: SNAKE EATER, which runs as MGSDelta, now shows as itself with its achievements instead of as a separate game.
+- Achievements read from saves made with older Unreal Engine versions now count every entry, not only the first.
+- Starting the app twice in quick succession no longer runs two copies that each tracked your games.

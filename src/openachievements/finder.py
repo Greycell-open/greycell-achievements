@@ -34,7 +34,7 @@ import time
 import urllib.parse
 from datetime import datetime, timedelta, timezone
 
-from .adapters.autodetect import normalise, title_parts
+from .adapters.autodetect import normalise, title_aliases, title_parts
 from .adapters.stores import FINDABLE
 from .catalog import steam as cat
 
@@ -55,7 +55,7 @@ def candidates(game: dict) -> list[str]:
 
 
 def _names_of(title: str) -> set[str]:
-    return {normalise(title), *title_parts(title)}
+    return set(title_aliases(title))
 
 
 def catalogue_match(game: dict, index: cat.CatalogIndex | None) -> int | None:
@@ -70,7 +70,7 @@ def catalogue_match(game: dict, index: cat.CatalogIndex | None) -> int | None:
         return next(iter(exact))
     if exact:
         return None
-    by_part = {a for a, (_o, _l, _c, t) in index.entries.items() if wanted & set(title_parts(t))}
+    by_part = {a for a, (_o, _l, _c, t) in index.entries.items() if wanted & _names_of(t)}
     return next(iter(by_part)) if len(by_part) == 1 else None
 
 
@@ -99,7 +99,7 @@ def store_match(game: dict, fetch) -> dict[int, str] | None | bool:
             continue
         if normalise(name) in wanted:
             exact[appid] = name
-        elif wanted & set(title_parts(name)):
+        elif wanted & _names_of(name):
             by_part[appid] = name
     return exact or by_part or None
 

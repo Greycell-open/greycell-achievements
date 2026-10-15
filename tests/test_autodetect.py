@@ -94,7 +94,7 @@ def test_a_game_no_catalogue_names_is_still_tracked_for_play_time(profile, catal
     assert game["status"] == "playing" and len(game["installations"]) == 1
     from openachievements.adapters import executable
     w = executable.Watcher(profile)
-    w.poll({exe}, now=0)
+    w.poll({exe.lower()}, now=0)                    # running_executables() lowercases, on Linux too
     w.poll(set(), now=900)
     lib = next(g for g in profile.library()["games"] if g["game_id"] == "local-tiny-indie-thing")
     assert lib["playtime_seconds"] == 900 and lib["total"] == 0              # play time, no achievements

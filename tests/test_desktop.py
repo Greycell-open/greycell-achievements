@@ -19,6 +19,7 @@ def sandbox(tmp_path, monkeypatch):
     from openachievements import linux_desktop                  # nor on Linux
     monkeypatch.setattr(linux_desktop, "open_url", lambda url, window=True: calls["browser"].append(url))
     monkeypatch.setattr(desktop.time, "sleep", lambda s: None)
+    monkeypatch.setattr(desktop, "_claim_instance", lambda: True)   # the real claim has its own test
     return tmp_path, calls
 
 
@@ -50,6 +51,50 @@ def test_a_second_launch_only_opens_the_browser(sandbox, monkeypatch):
     assert calls["cli"] == [] and calls["browser"] == ["http://127.0.0.1:8788"]
     assert desktop.main(["--background"]) == 0                # Start with Windows, already running: nothing
     assert calls["browser"] == ["http://127.0.0.1:8788"]
+
+
+def test_a_launch_while_another_copy_is_still_starting_does_not_run_twice(sandbox, monkeypatch):
+    _, calls = sandbox
+    served, ports = [], iter([False, False, False, True])
+    monkeypatch.setattr(desktop, "_running", lambda: next(ports))
+    monkeypatch.setattr(desktop, "_claim_instance", lambda: False)
+    monkeypatch.setattr(desktop, "serve_in_tray", lambda background: served.append(background) or 0)
+    assert desktop.main([]) == 0
+    assert served == [] and calls["browser"] == ["http://127.0.0.1:8788"]   # the first copy's library
+    monkeypatch.setattr(desktop, "_running", lambda: False)
+    assert desktop.main(["--background"]) == 0
+    assert served == [] and calls["browser"] == ["http://127.0.0.1:8788"]
+
+
+HOLD = """
+import sys
+from openachievements import desktop
+print("held" if desktop._claim_instance() else "refused", flush=True)
+sys.stdin.read()
+"""
+
+
+def test_only_one_process_can_claim_the_app(tmp_path, monkeypatch):
+    import os
+    import random
+    import subprocess
+    from pathlib import Path
+    port = str(random.randint(20000, 60000))                  # never the real app's claim
+    env = {**os.environ, "GREYCELL_ACHIEVEMENTS_PORT": port, "OPENACHIEVEMENTS_CONFIG": str(tmp_path),
+           "PYTHONPATH": str(Path(desktop.__file__).resolve().parents[1])}
+    first = subprocess.Popen([sys.executable, "-c", HOLD], env=env, stdin=subprocess.PIPE,
+                             stdout=subprocess.PIPE, text=True)
+    try:
+        assert first.stdout.readline().strip() == "held"
+        second = subprocess.run([sys.executable, "-c", HOLD], env=env, input="", capture_output=True,
+                                text=True, timeout=60)
+        assert second.stdout.strip() == "refused"
+    finally:
+        first.stdin.close()
+        first.wait(timeout=60)
+    again = subprocess.run([sys.executable, "-c", HOLD], env=env, input="", capture_output=True,
+                           text=True, timeout=60)
+    assert again.stdout.strip() == "held"                     # released when the first one ended
 
 
 class FakeRegistry:
@@ -241,6 +286,26 @@ def test_the_pulse_changes_when_something_is_recorded_and_lists_what_runs(profil
         watching.LIVE = {"playing": ["test-game"], "at": 1.0}
         now = local.get("/v1/local/pulse", headers=h).json()
         assert now["watching"] is True and now["playing"] == [{"game_id": "test-game", "title": "Test Game"}]
+    finally:
+        watching.LIVE = old
+
+
+def test_the_pulse_shows_a_running_local_copy_as_its_linked_game(profile):
+    from fastapi.testclient import TestClient
+    from openachievements import watching
+    from openachievements.local_app import create_local_app
+    profile.register_game("local-mgsdelta", "MGSDelta", platform="PC")
+    profile.register_game("steam-2417610", "METAL GEAR SOLID Δ: SNAKE EATER", platform="PC",
+                          external_ids={"steam": 2417610})
+    profile.link_games("local-mgsdelta", "steam-2417610")
+    local = TestClient(create_local_app(profile, token="t" * 32), base_url="http://127.0.0.1:8788")
+    old = watching.LIVE
+    try:
+        watching.LIVE = {"playing": ["local-mgsdelta", "steam-2417610"], "at": 1.0}
+        assert local.get("/v1/local/pulse").json()["playing"] == [{
+            "game_id": "steam-2417610",
+            "title": "METAL GEAR SOLID Δ: SNAKE EATER",
+        }]
     finally:
         watching.LIVE = old
 
