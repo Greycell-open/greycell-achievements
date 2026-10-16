@@ -100,6 +100,51 @@ def test_a_game_no_catalogue_names_is_still_tracked_for_play_time(profile, catal
     assert lib["playtime_seconds"] == 900 and lib["total"] == 0              # play time, no achievements
 
 
+HELLRAISER_EXE = "Games/CB's Hellraiser - Revival/Hellraiser/Binaries/Win64/Hellraiser-Win64-Shipping.exe"
+RUNE_INI = "Engine/Binaries/ThirdParty/Steamworks/Steamv157/Win64/steam_emu.ini"
+
+
+def test_a_game_is_named_by_the_steam_app_id_its_install_declares(profile, catalogue, monkeypatch, tmp_path):
+    # Hellraiser on the owner's PC: no catalogue title is "Hellraiser", but the
+    # repack's emulator settings name the Steam app.
+    exe = make_game(tmp_path / "D", HELLRAISER_EXE)
+    ini = tmp_path / "D" / "Games" / "CB's Hellraiser - Revival" / RUNE_INI
+    ini.parent.mkdir(parents=True)
+    ini.write_text("### Game identifier (http://store.steampowered.com/app/1551980)\n[Settings]\nAppId=1551980\n"
+                   "UserName=Player\n")
+    stand_in = ad.local_game_id("Hellraiser")
+    profile.register_game(stand_in, "Hellraiser", platform="PC", external_ids={})
+    found = detector(profile, catalogue, monkeypatch, tmp_path).poll({exe})
+    assert found[0]["game_id"] == "steam-1551980"
+    games = profile.state()["games"]
+    assert games["steam-1551980"]["external_ids"] == {"steam": 1551980}
+    assert games["steam-1551980"]["title"] != "Win64"
+    assert games[stand_in]["linked_to"] == "steam-1551980"        # the earlier stand-in joins it
+
+
+def test_a_declared_id_must_be_one_and_never_spacewar(profile, catalogue, monkeypatch, tmp_path):
+    exe = make_game(tmp_path / "D", "Games/Odd Game/OddGame.exe", ["steam_api64.dll"])
+    (Path(exe).parent / "steam_appid.txt").write_text("480\n")             # Valve's test app: a placeholder
+    from openachievements.adapters import declared_appid as da
+    assert da.declared_appid(exe) is None
+    (Path(exe).parent / "steam_appid.txt").write_text("1111\n")
+    assert da.declared_appid(exe) == 1111
+    (Path(exe).parent / "tools").mkdir()
+    (Path(exe).parent / "tools" / "steam_appid.txt").write_text("2222")      # two ids: no guess
+    assert da.declared_appid(exe) is None
+    found = detector(profile, catalogue, monkeypatch, tmp_path).poll({exe})
+    assert [f["game_id"] for f in found] == ["local-odd-game"]
+
+
+def test_a_program_loose_in_a_games_folder_never_takes_a_neighbours_id(tmp_path):
+    from openachievements.adapters import declared_appid as da
+    exe = make_game(tmp_path / "D", "Games/loose.exe", ["UnityPlayer.dll"])
+    neighbour = tmp_path / "D" / "Games" / "Other Game"
+    neighbour.mkdir()
+    (neighbour / "steam_appid.txt").write_text("3333")
+    assert da.declared_appid(exe) is None
+
+
 def test_a_gog_install_is_named_by_its_own_info_file(profile, catalogue, monkeypatch, tmp_path):
     exe = make_game(tmp_path / "D", "GOG Games/Some Game/bin/somegame.exe")
     (Path(exe).parent.parent / "goggame-1207658924.info").write_text(json.dumps(

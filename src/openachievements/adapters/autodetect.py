@@ -31,6 +31,7 @@ from .. import steamfiles as sf
 from ..catalog import steam as cat
 from ..profile import Profile, ProfileError
 from . import engine_saves, executable, savefile, stores
+from .declared_appid import declared_appid
 
 # Words that name an edition or a release, not the game.
 _NOISE = re.compile(r"\b(definitive|deluxe|ultimate|complete|goty|game of the year|remastered|enhanced|"
@@ -38,6 +39,9 @@ _NOISE = re.compile(r"\b(definitive|deluxe|ultimate|complete|goty|game of the ye
                     r"shipping|launcher|dx11|dx12|v\d+(\.\d+)*|build \d+)\b")
 _BRACKETS = re.compile(r"[\[\(\{][^\]\)\}]*[\]\)\}]")
 _NON_WORD = re.compile(r"[^a-z0-9]+")
+# "Clive Barker's Hellraiser: Revival", "Tom Clancy's The Division": a person's
+# name in front of the game's own title, which the game's files leave out.
+_AUTHOR = re.compile(r"^\s*[A-Z][\w.]*\s+[A-Z][\w.]*['’]s\s+(\S.*)$")
 _SYSTEM = ("\\windows\\", "/windows/", "\\windowsapps\\", "\\microsoft\\", "\\nvidia", "\\amd\\",
            "\\common files\\", "\\appdata\\", "/usr/", "/system/", "/bin/", "/sbin/", "/library/")
 # Files and folders game engines and game SDKs leave next to a game's program.
@@ -91,8 +95,16 @@ def title_aliases(title: str) -> list[str]:
     and five letter names, so a game nobody catalogued, in a folder called
     "Test" or "Kaos", would take a stranger's achievements. The final word
     must be a real word for the same reason.
+
+    A title that opens with a person's name in the possessive is also known
+    without it: ``Clive Barker's Hellraiser: Revival`` gives ``hellraiser``,
+    the name its program and save folder use. Two capitalised words are
+    required, so ``Baldur's Gate`` and ``Assassin's Creed`` keep their names.
     """
     phrases = [normalise(title), *title_parts(title)]
+    author = _AUTHOR.match(title)
+    if author:
+        phrases += [normalise(author.group(1)), *title_parts(author.group(1))]
     aliases = list(phrases)
     for phrase in phrases:
         words = phrase.split()
@@ -429,6 +441,11 @@ class AutoDetector:
             return None
         if gog is not None:
             return ("gog", gog[0], gog[1])
+        # The install names its own Steam app id (the SDK's steam_appid.txt, an
+        # emulator's settings): that is the game, whatever its folders are called.
+        appid = declared_appid(path)
+        if appid is not None:
+            return ("steam", appid)
         unity = unity_info(path)
         match = self._matcher.match(candidates_for(path) + ([unity[1]] if unity else []))
         if match:
@@ -602,7 +619,8 @@ class AutoDetector:
                 if self._index is not None and self._index.get(ref):
                     cat.add_to_profile(self.profile, self._index, ref)
                 else:
-                    self.profile.register_game(game_id, getattr(self, "_names", {}).get(ref) or Path(path).parent.name,
+                    self.profile.register_game(game_id, getattr(self, "_names", {}).get(ref) or folder_title(path)
+                                               or Path(path).parent.name,
                                                platform="PC", external_ids={"steam": ref})
         else:
             game_id = ref

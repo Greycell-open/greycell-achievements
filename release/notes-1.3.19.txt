@@ -1,0 +1,3 @@
+Greycell Achievements 1.3.19
+- Games whose folders use a different name than their Steam page are now recognised from the Steam app id the install itself declares, so they get their achievements. Example: Clive Barker's Hellraiser: Revival, which calls itself just "Hellraiser".
+- Steam titles that start with a person's name, like "Clive Barker's" or "Tom Clancy's", also match the game's short name.

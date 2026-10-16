@@ -86,6 +86,35 @@ def test_a_compact_alias_shared_by_two_titles_is_not_guessed():
     assert ad.TitleMatcher(index).match(["MGSDelta"]) is None
 
 
+HELLRAISER_APPID = 1551980
+HELLRAISER_TITLE = "Clive Barker's Hellraiser: Revival"
+
+
+def test_a_persons_name_in_front_of_the_title_is_optional():
+    # The game's program, folders and saves are all called "Hellraiser".
+    assert "hellraiser" in ad.title_aliases(HELLRAISER_TITLE)
+    assert "hellraiser revival" in ad.title_aliases(HELLRAISER_TITLE)
+    index = ad._Titles({HELLRAISER_APPID: HELLRAISER_TITLE})
+    assert ad.TitleMatcher(index).match(["Hellraiser"]) == ("steam", HELLRAISER_APPID)
+    # One possessive word is part of the name, not a person in front of it.
+    assert ad.title_aliases("Baldur's Gate 3") == ["baldurs gate 3"]
+    assert "creed mirage" not in ad.title_aliases("Assassin's Creed Mirage")
+
+
+def test_hellraiser_is_found_among_its_demo_dlc_and_namesakes(profile):
+    # What Steam's store search really answers for "Hellraiser" (2026-10-16).
+    game_id = local_game(profile, "Hellraiser")
+    results = [{"type": "app", "name": HELLRAISER_TITLE, "id": HELLRAISER_APPID},
+               {"type": "app", "name": "Medved Hellraiser 2", "id": 2468940},
+               {"type": "app", "name": "Medved Hellraiser 3: Green Elephant", "id": 2951500},
+               {"type": "app", "name": "Clive Barker's Hellraiser: Revival Demo", "id": 5184670},
+               {"type": "app", "name": "Medved Hellraiser", "id": 2332460},
+               {"type": "app", "name": "Clive Barker\u2019s Hellraiser: Revival - Deluxe Content", "id": 4664770}]
+    found = finder(profile, fake_steam(results, {HELLRAISER_APPID: SCHEMA})).find_one(game_id)
+    assert found == {"result": "linked", "steam_game": f"steam-{HELLRAISER_APPID}", "appid": HELLRAISER_APPID}
+    assert profile.state()["games"][game_id]["linked_to"] == f"steam-{HELLRAISER_APPID}"
+
+
 def test_a_local_game_is_found_on_steam_and_linked_with_its_achievements(profile):
     game_id = local_game(profile)
     calls = []
